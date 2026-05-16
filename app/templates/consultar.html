@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - Gestión de Pólizas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc;
+            --text-muted: #94a3b8; --primary: #38bdf8; --primary-hover: #0ea5e9;
+            --danger: #ef4444; --whatsapp: #25d366; --border: #334155;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; }
+        .sidebar { width: 260px; background-color: var(--bg-card); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
+        
+/* Contenedor con fondo blanco al 50% de transparencia y esquinas redondeadas */
+        .brand { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.8); /* Blanco con 50% de opacidad */
+            padding: 10px 14px;
+            border-radius: 8px; /* Esquinas redondeadas suaves */
+            margin-bottom: 0.5rem;
+        }
+        .sidebar-logo {
+            width: 100%;
+            max-width: 210px;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .menu { display: flex; flex-direction: column; gap: 0.5rem; list-style: none; }
+        .menu-item a { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; color: var(--text-muted); text-decoration: none; border-radius: 0.5rem; transition: 0.2s; font-weight: 500; }
+        .menu-item.active a, .menu-item a:hover { background-color: rgba(56, 189, 248, 0.1); color: var(--primary); }
+        .main-content { flex: 1; padding: 2rem 3rem; overflow-y: auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
+        .user-profile { display: flex; align-items: center; gap: 0.75rem; background: var(--bg-card); padding: 0.5rem 1rem; border-radius: 2rem; border: 1px solid var(--border); }
+        .search-section { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 2rem; margin-bottom: 2rem; }
+        .grid-filters { display: grid; grid-template-columns: 2fr 1fr 1.5fr 1fr auto; gap: 1.25rem; align-items: end; }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .form-group label { font-size: 0.875rem; color: var(--text-muted); }
+        .form-control { background-color: var(--bg-dark); border: 1px solid var(--border); color: var(--text-main); padding: 0.75rem 1rem; border-radius: 0.5rem; outline: none; width: 100%; }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; height: 46px; }
+        .btn-primary { background-color: var(--primary); color: var(--bg-dark); }
+        .results-section { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; overflow: hidden; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background-color: rgba(15, 23, 42, 0.5); padding: 1rem 1.5rem; font-size: 0.875rem; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+        td { padding: 1rem 1.5rem; border-bottom: 1px solid var(--border); }
+        .actions-cell { display: flex; gap: 0.75rem; }
+        .btn-action { padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.375rem; cursor: pointer; border: none; }
+        .btn-view { background-color: rgba(56, 189, 248, 0.1); color: var(--primary); }
+        .btn-whatsapp { background-color: rgba(37, 211, 102, 0.1); color: var(--whatsapp); }
+        .no-data { padding: 3rem; text-align: center; color: var(--text-muted); }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand">
+            <img src="/static/logo_sidebar.png" alt="Logo Pasarin & Asociados" class="sidebar-logo">
+        </div>
+        <ul class="menu">
+            <li class="menu-item active"><a href="/panel"><i class="fa-solid fa-magnifying-glass"></i> Consultar</a></li>
+            <li class="menu-item"><a href="/subir_pantalla"><i class="fa-solid fa-cloud-arrow-up"></i> Cargar Póliza</a></li>
+            {% if rol == 'admin' %}
+            <li class="menu-item"><a href="/usuarios_pantalla"><i class="fa-solid fa-users-gear"></i> Usuarios</a></li>
+            <li class="menu-item"><a href="/mantenimiento_pantalla"><i class="fa-solid fa-database"></i> Mantenimiento</a></li>
+            {% endif %}
+            <li class="menu-item logout" style="margin-top: auto;"><a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Salir</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header>
+            <h1>Panel de Consultas</h1>
+            <div class="user-profile"><i class="fa-solid fa-user-circle" style="color: var(--primary);"></i>
+                <span>{{ nombre }}</span> </div>
+        </header>
+
+        <section class="search-section">
+            <div class="grid-filters">
+                <div class="form-group"><label>Cliente</label><input type="text" id="cliente" class="form-control" placeholder="Juan Pérez"></div>
+                <div class="form-group"><label>Día</label><input type="number" id="dia" class="form-control" placeholder="05"></div>
+                <div class="form-group"><label>Mes</label><select id="mes" class="form-control"><option value="">Todos</option><option value="ENE">Enero</option><option value="FEB">Febrero</option><option value="MAR">Marzo</option><option value="ABR">Abril</option><option value="MAY">Mayo</option><option value="JUN">Junio</option><option value="JUL">Julio</option><option value="AGO">Agosto</option><option value="SEP">Septiembre</option><option value="OCT">Octubre</option><option value="NOV">Noviembre</option><option value="DIC">Diciembre</option></select></div>
+                <div class="form-group"><label>Año</label><input type="number" id="anio" class="form-control" placeholder="2026"></div>
+                <button class="btn btn-primary" onclick="ejecutarBusqueda()"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
+            </div>
+        </section>
+
+        <section class="results-section">
+            <table>
+                <thead><tr><th>Cliente</th><th>Fecha</th><th style="width: 240px;">Acciones</th></tr></thead>
+                <tbody id="tabla-resultados"><tr><td colspan="3" class="no-data">Inicia una búsqueda...</td></tr></tbody>
+            </table>
+        </section>
+    </div>
+
+    <script>
+        async function ejecutarBusqueda() {
+            const tabla = document.getElementById('tabla-resultados');
+            let url = `/buscar_poliza?cliente=${encodeURIComponent(document.getElementById('cliente').value)}&dia=${document.getElementById('dia').value}&mes=${document.getElementById('mes').value}&anio=${document.getElementById('anio').value}`;
+            try {
+                const response = await fetch(url);
+                const datos = await response.json();
+                tabla.innerHTML = "";
+                if(datos.error || datos.length === 0) { tabla.innerHTML = '<tr><td colspan="3" class="no-data">No hay resultados.</td></tr>'; return; }
+                datos.forEach(poliza => {
+                    const fila = document.createElement('tr');
+                    fila.innerHTML = `<td><strong>${poliza.cliente_nombre}</strong></td><td>${poliza.dia}/${poliza.mes}/${poliza.anio}</td>
+                        <td class="actions-cell">
+                            <button onclick="verPDF('${poliza.url_archivo}')" class="btn-action btn-view"><i class="fa-solid fa-file-pdf"></i> Ver PDF</button>
+                            <button class="btn-action btn-whatsapp" onclick="compartirFisico('${poliza.url_archivo}', '${poliza.cliente_nombre}.pdf')"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>
+                        </td>`;
+                    tabla.appendChild(fila);
+                });
+            } catch (err) { console.error(err); }
+        }
+
+        // VENTANA INDEPENDIENTE FORZADA (Evita pestañas nuevas)
+        function verPDF(url) {
+            const ancho = 900; const alto = 800;
+            const x = (screen.width / 2) - (ancho / 2);
+            const y = (screen.height / 2) - (alto / 2);
+            window.open(url, 'Visualizador', `width=${ancho},height=${alto},left=${x},top=${y},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
+        }
+
+        // COMPARTIR DOCUMENTO FÍSICO POR WHATSAPP
+        async function compartirFisico(url, nombre) {
+            try {
+                const res = await fetch(url); const blob = await res.blob();
+                const file = new File([blob], nombre, { type: "application/pdf" });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file], title: 'Póliza', text: nombre });
+                } else {
+                    alert("Tu navegador o dispositivo no soporta el envío directo de archivos físicos.");
+                }
+            } catch (e) { console.error(e); }
+        }
+    </script>
+</body>
+</html>

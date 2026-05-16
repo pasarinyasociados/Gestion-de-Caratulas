@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Buscador de Pólizas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+    <nav class="bg-gray-800 p-4 border-b border-gray-700">
+        <div class="container mx-auto flex justify-between">
+            <h1 class="text-xl font-bold text-blue-400">Buscador de Pólizas</h1>
+            <div class="flex gap-4">
+                <a href="/subir_pantalla" class="text-gray-400 hover:text-white">Subir Pólizas</a>
+                <a href="/" class="text-red-400 hover:text-white">Cerrar Sesión</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mx-auto mt-10 p-4">
+        <!-- BUSCADOR -->
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
+            <h2 class="text-lg mb-4 text-blue-400 font-bold">Consultar Cliente</h2>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <input type="text" id="nombre" placeholder="Nombre o Apellido..." class="p-2 rounded bg-gray-700 border border-gray-600 text-white outline-none focus:border-blue-500">
+                <input type="number" id="dia" placeholder="Día" class="p-2 rounded bg-gray-700 border border-gray-600 text-white outline-none">
+                <input type="text" id="mes" placeholder="Mes (3 letras)" class="p-2 rounded bg-gray-700 border border-gray-600 text-white outline-none">
+                <input type="number" id="anio" placeholder="Año" class="p-2 rounded bg-gray-700 border border-gray-600 text-white outline-none">
+                
+                <button onclick="ejecutarBusqueda()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold transition shadow-md">
+                    Buscar Ahora
+                </button>
+            </div>
+        </div>
+
+        <div id="resultado" class="mt-8 hidden p-6 bg-gray-800 rounded-lg border border-gray-700 shadow-inner">
+            <!-- Resultados dinámicos -->
+        </div>
+    </div>
+
+    <script>
+        async function ejecutarBusqueda() {
+            const cliente = document.getElementById('nombre').value.trim();
+            const dia = document.getElementById('dia').value.trim();
+            const mes = document.getElementById('mes').value.trim();
+            const anio = document.getElementById('anio').value.trim();
+            const resDiv = document.getElementById('resultado');
+
+            const params = new URLSearchParams();
+            if (cliente) params.append('cliente', cliente);
+            if (dia) params.append('dia', dia);
+            if (mes) params.append('mes', mes);
+            if (anio) params.append('anio', anio);
+
+            const respuesta = await fetch(`/buscar_poliza?${params.toString()}`);
+            const datos = await respuesta.json();
+
+            resDiv.classList.remove('hidden');
+            resDiv.innerHTML = ""; 
+
+            if (Array.isArray(datos) && datos.length > 0) {
+                datos.forEach(p => {
+                    const tarjeta = document.createElement('div');
+                    tarjeta.className = "border-l-4 border-blue-500 pl-4 mb-6 bg-gray-700 p-4 rounded shadow-sm hover:bg-gray-600 transition";
+                    tarjeta.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="text-xl font-bold text-white">${p.cliente_nombre}</h3>
+                                <p class="text-gray-400">📅 Fecha: ${p.dia} / ${p.mes} / ${p.anio}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="abrirVisor('${p.url_archivo}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold text-sm transition">
+                                    👁️ Ver
+                                </button>
+                                <button onclick="enviarArchivoWhatsApp('${p.url_archivo}', '${p.cliente_nombre}')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-bold text-sm transition">
+                                    📱 WhatsApp
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    resDiv.appendChild(tarjeta);
+                });
+            } else {
+                const mensaje = datos.error ? datos.error : "No se encontraron coincidencias.";
+                resDiv.innerHTML = `<p class="text-red-400 font-bold text-center">⚠️ ${mensaje}</p>`;
+            }
+        }
+
+        async function enviarArchivoWhatsApp(url, nombre) {
+            try {
+                const respuesta = await fetch(url);
+                const blob = await respuesta.blob();
+                const archivo = new File([blob], `Poliza_${nombre.replace(/\s+/g, '_')}.pdf`, { type: 'application/pdf' });
+
+                if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+                    await navigator.share({
+                        files: [archivo],
+                        title: 'Póliza',
+                        text: `Hola, te envío la póliza de ${nombre}`
+                    });
+                } else {
+                    const mensaje = encodeURIComponent(`Hola ${nombre}, aquí tienes tu póliza: `);
+                    window.open(`https://api.whatsapp.com/send?text=${mensaje}${url}`, '_blank');
+                }
+            } catch (err) {
+                alert("Error al preparar el envío.");
+            }
+        }
+
+        function abrirVisor(url) {
+            const ancho = 800, alto = 900;
+            const x = (screen.width / 2) - (ancho / 2);
+            const y = (screen.height / 2) - (alto / 2);
+            window.open(url, 'Visor', `width=${ancho},height=${alto},left=${x},top=${y}`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SGP - Iniciar Sesión</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc;
+            --text-muted: #94a3b8; --primary: #38bdf8; --border: #334155;
+            --danger: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { 
+            background-color: var(--bg-dark); 
+            color: var(--text-main); 
+            min-height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 1.5rem;
+        }
+        
+        /* ENCABEZADO Y LOGO COMPARTIDO */
+        .brand-header { text-align: center; margin-bottom: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+	.system-logo { 
+            width: 100%; 
+            max-width: 280px; 
+            height: auto;     
+            object-fit: contain;
+            background-color: #ffffff;
+            padding: 12px 18px;
+            display: block;
+            margin: 0 auto 10px auto;
+            
+            /* Este truco hace el desvanecido (fade) suave hacia las orillas */
+            -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
+            mask-image: radial-gradient(circle, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
+        }
+
+        .login-card { 
+            background-color: var(--bg-card); 
+            border: 1px solid var(--border); 
+            border-radius: 1rem; 
+            padding: 2.5rem; 
+            width: 100%; 
+            max-width: 420px; 
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+        .form-group label { font-size: 0.9rem; color: var(--text-muted); font-weight: 500; }
+        .input-wrapper { position: relative; display: flex; align-items: center; }
+        .input-wrapper i { position: absolute; left: 1rem; color: var(--text-muted); font-size: 1rem; }
+        .form-control { width: 100%; background-color: var(--bg-dark); border: 1px solid var(--border); color: var(--text-main); padding: 0.85rem 1rem 0.85rem 2.75rem; border-radius: 0.5rem; outline: none; transition: 0.2s; }
+        .form-control:focus { border-color: var(--primary); }
+        
+        .btn-submit { width: 100%; padding: 0.85rem; border-radius: 0.5rem; font-weight: 700; border: none; cursor: pointer; background-color: var(--primary); color: var(--bg-dark); font-size: 1rem; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; transition: 0.2s; }
+        .btn-submit:hover { background-color: #0ea5e9; }
+        
+        .error-alert { background-color: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); padding: 0.75rem 1rem; border-radius: 0.5rem; font-size: 0.9rem; font-weight: 600; text-align: center; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    </style>
+</head>
+<body>
+
+    <div class="brand-header">
+        <img src="/static/logo.jpg?v=2" alt="Logo de la Empresa" class="system-logo">
+        <h1 class="system-title">SGP - Gestión de Pólizas</h1>
+    </div>
+
+    <div class="login-card">
+        {% if error %}
+        <div class="error-alert">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <form action="/login" method="POST">
+            <div class="form-group">
+                <label for="username">Usuario</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-user"></i>
+                    <input type="text" id="username" name="username" class="form-control" placeholder="Ingresa tu usuario" required autocomplete="off">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <div class="input-wrapper">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="••••••••" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit"><i class="fa-solid fa-right-to-bracket"></i> Acceder al Sistema</button>
+        </form>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mantenimiento de Pólizas - Gestión</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc;
+            --text-muted: #94a3b8; --primary: #38bdf8; --border: #334155;
+            --danger: #ef4444; --success: #22c55e;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; }
+        .sidebar { width: 260px; background-color: var(--bg-card); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
+        
+        /* Contenedor con fondo blanco al 50% de transparencia y esquinas redondeadas */
+        .brand { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.8); /* Blanco con 80% de opacidad */
+            padding: 10px 14px;
+            border-radius: 8px; /* Esquinas redondeadas suaves */
+            margin-bottom: 0.5rem;
+        }
+        .sidebar-logo {
+            width: 100%;
+            max-width: 210px;
+            height: auto;
+            object-fit: contain;
+        }
+
+        .menu { display: flex; flex-direction: column; gap: 0.5rem; list-style: none; }
+        .menu-item a { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; color: var(--text-muted); text-decoration: none; border-radius: 0.5rem; font-weight: 500; }
+        .menu-item.active a, .menu-item a:hover { background-color: rgba(56, 189, 248, 0.1); color: var(--primary); }
+        .main-content { flex: 1; padding: 2rem 3rem; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
+        .user-profile { display: flex; align-items: center; gap: 0.75rem; background: var(--bg-card); padding: 0.5rem 1rem; border-radius: 2rem; border: 1px solid var(--border); }
+        
+        .maint-container { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; max-width: 900px; margin: 0 auto; }
+        .card { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+        h3 { color: var(--primary); font-size: 1.2rem; display: flex; align-items: center; gap: 0.5rem; }
+        .form-control { width: 100%; background-color: var(--bg-dark); border: 1px solid var(--border); color: var(--text-main); padding: 0.85rem; border-radius: 0.5rem; outline: none; }
+        .btn { padding: 0.85rem; border-radius: 0.5rem; font-weight: 700; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; justify-content: center; font-size: 0.95rem; }
+        .btn-download { background-color: var(--primary); color: var(--bg-dark); }
+        .btn-danger { background-color: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid var(--danger); }
+        .btn-danger:hover { background-color: var(--danger); color: var(--text-main); }
+        .btn-disabled { background-color: #1e293b !important; color: var(--text-muted) !important; border: 1px solid var(--border) !important; cursor: not-allowed !important; }
+        .info-txt { color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; }
+
+        /* NOTIFICACIÓN FLOTANTE ANIMADA */
+        .toast {
+            position: fixed; bottom: 20px; right: 20px; background-color: var(--danger); color: white;
+            padding: 1rem 1.5rem; border-radius: 0.5rem; display: flex; align-items: center; gap: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); transform: translateY(150%); transition: transform 0.3s ease; z-index: 1000; font-weight: 600;
+        }
+        .toast.show { transform: translateY(0); }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand">
+            <img src="/static/logo_sidebar.png" alt="Logo Pasarin & Asociados" class="sidebar-logo">
+        </div>
+        <ul class="menu">
+            <li class="menu-item"><a href="/panel"><i class="fa-solid fa-magnifying-glass"></i> Consultar</a></li>
+            <li class="menu-item"><a href="/subir_pantalla"><i class="fa-solid fa-cloud-arrow-up"></i> Cargar Póliza</a></li>
+            {% if rol == 'admin' %}
+            <li class="menu-item"><a href="/usuarios_pantalla"><i class="fa-solid fa-users-gear"></i> Usuarios</a></li>
+            <li class="menu-item active"><a href="/mantenimiento_pantalla"><i class="fa-solid fa-database"></i> Mantenimiento</a></li>
+            {% endif %}
+            <li class="menu-item logout" style="margin-top: auto;"><a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Salir</a></li>
+        </ul>
+    </div>
+    <div class="main-content">
+        <header>
+            <h1>Mantenimiento del Servidor</h1>
+            <div class="user-profile"><i class="fa-solid fa-user-circle" style="color: var(--primary);"></i><span>{{ nombre }}</span></div>
+        </header>
+        
+        <div class="maint-container">
+            <div class="card">
+                <h3><i class="fa-solid fa-file-zipper"></i> Descargar Respaldo</h3>
+                <p class="info-txt">Selecciona un año específico o la base de datos completa para descargar un archivo comprimido .ZIP con los PDFs físicos correspondientes.</p>
+                <select id="anio-download" class="form-control">
+                    <option value="todos">Todos los años (Respaldo Completo)</option>
+                    </select>
+                <button class="btn btn-download" onclick="descargarZip()"><i class="fa-solid fa-download"></i> Descargar ZIP</button>
+            </div>
+
+            <div class="card">
+                <h3 style="color: var(--danger);"><i class="fa-solid fa-trash-can"></i> Depurar Año Obsoleto</h3>
+                <p class="info-txt">Elimina de forma permanente las pólizas de años que están fuera del periodo de vigencia permitido. Liberará espacio físico en el Storage.</p>
+                <select id="anio-purgar" class="form-control">
+                    </select>
+                <button id="btn-purgar-action" class="btn btn-danger" onclick="purgarAnio()"><i class="fa-solid fa-dumpster-fire"></i> Purgar Año Completo</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-error" class="toast"><i class="fa-solid fa-circle-exclamation"></i> <span id="toast-msg">No hay pólizas en este periodo.</span></div>
+
+    <script>
+        // Muestra una notificación que desaparece sola tras 4 segundos
+        function mostrarAviso(mensaje) {
+            const toast = document.getElementById('toast-error');
+            document.getElementById('toast-msg').innerText = mensaje;
+            toast.addClass = toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 4000);
+        }
+
+        // Carga dinámica de los filtros de descarga y purga
+        function inicializarModulo() {
+            // 1. Configurar descargas con los 3 años vigentes automáticamente
+            const selectDownload = document.getElementById('anio-download');
+            const anioActual = new Date().getFullYear();
+            
+            for (let i = 0; i < 3; i++) {
+                const anioVigente = anioActual - i;
+                const opt = document.createElement('option');
+                opt.value = anioVigente;
+                opt.innerText = `Año ${anioVigente}`;
+                selectDownload.appendChild(opt);
+            }
+
+            // 2. Ejecutar la búsqueda de años obsoletos en la base de datos
+            checarAniosObsoletos();
+        }
+
+        async function descargarZip() {
+            const anio = document.getElementById('anio-download').value;
+            
+            // Hacemos una petición silenciosa antes de redirigir para validar si hay archivos
+            try {
+                const res = await fetch(`/descargar_ano/${anio}`);
+                if (res.status === 404) {
+                    mostrarAviso("¡Atención! No existen pólizas guardadas para el periodo seleccionado.");
+                } else if (res.ok) {
+                    // Si todo está bien, disparamos la descarga real
+                    window.location.href = `/descargar_ano/${anio}`;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        async function checarAniosObsoletos() {
+            const selectPurga = document.getElementById('anio-purgar');
+            const btnPurga = document.getElementById('btn-purgar-action');
+            
+            try {
+                const res = await fetch('/detectar_obsoleto');
+                const data = await res.json();
+                
+                selectPurga.innerHTML = "";
+                
+                if (data.anios && data.anios.length > 0) {
+                    data.anios.forEach(anio => {
+                        const opt = document.createElement('option');
+                        opt.value = anio;
+                        opt.innerText = `Año ${anio} (Obsoleto)`;
+                        selectPurga.appendChild(opt);
+                    });
+                    btnPurga.disabled = false;
+                    btnPurga.classList.remove('btn-disabled');
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = "";
+                    opt.innerText = "No se detectaron años obsoletos con pólizas";
+                    selectPurga.appendChild(opt);
+                    btnPurga.disabled = true;
+                    btnPurga.classList.add('btn-disabled');
+                }
+            } catch (e) {
+                console.error("Error al detectar años obsoletos:", e);
+            }
+        }
+
+        async function purgarAnio() {
+            const selectPurga = document.getElementById('anio-purgar');
+            const anio = selectPurga.value;
+            if (!anio) return;
+            
+            if (confirm(`¡ATENCIÓN! ¿Estás completamente seguro de eliminar TODAS las pólizas del año ${anio}?\nEsta acción no se puede deshacer y liberará espacio en el servidor.`)) {
+                const razon = prompt(`Para confirmar la eliminación masiva del año ${anio}, escribe la palabra: BORRAR`);
+                if (razon === "BORRAR") {
+                    const res = await fetch(`/purgar_ano/${anio}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    if(res.ok) {
+                        alert(data.message);
+                        checarAniosObsoletos();
+                    }
+                } else {
+                    alert("Confirmación incorrecta. Operación cancelada.");
+                }
+            }
+        }
+
+        // Lanzar la inicialización inteligente al cargar la pantalla
+        window.onload = inicializarModulo;
+    </script>
+</body>
+</html>
