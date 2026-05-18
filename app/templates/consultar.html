@@ -221,44 +221,42 @@ listaDocumentos.forEach(doc => {
             } catch (e) { console.error(e); }
         }
 
-        // FUNCIÓN PARA ELIMINAR UNA PÓLIZA INDIVIDUAL
-        async function eliminarPoliza(polizaId, boton) {
-            if (!confirm("¿Estás completamente seguro de que deseas eliminar este documento y su archivo físico? Esta acción no se puede deshacer.")) {
-                return;
-            }
+// FUNCIÓN PARA ELIMINAR UN DOCUMENTO (PÓLIZA O RECIBO)
+async function eliminarPoliza(polizaId, urlArchivo, boton) {
+    if (!confirm("¿Estás completamente seguro de que deseas eliminar este documento y su archivo físico? Esta acción no se puede deshacer.")) {
+        return;
+    }
 
-            try {
-                const response = await fetch(`/eliminar_poliza/${polizaId}`, {
-                    method: 'DELETE'
-                });
-                const resultado = await response.json();
+    try {
+        // Le pasamos la URL como parámetro para que el backend sepa exactamente qué archivo borrar
+        const response = await fetch(`/eliminar_poliza/${polizaId}?url_archivo=${encodeURIComponent(urlArchivo)}`, {
+            method: 'DELETE'
+        });
+        const resultado = await response.json();
 
-                if (resultado.status === 'success') {
-                    alert("Documento eliminado con éxito.");
-                    
-                    // Manejo visual inteligente de remoción de filas o bloques vacíos
-                    const fila = boton.closest('tr');
-                    const tbody = fila.closest('tbody');
-                    fila.remove();
-                    
-                    // Si el bloque se quedó sin registros, borramos todo el bloque visual
-                    if (tbody.children.length === 0) {
-                        tbody.closest('.results-section').parentNode.remove();
-                    }
-                    
-                    // Si ya no queda ningún bloque, ponemos el mensaje de estado inicial
-                    const contenedor = document.getElementById('contenedor-resultados');
-                    if (contenedor.children.length === 0) {
-                        contenedor.innerHTML = '<div class="no-data">No hay resultados.</div>';
-                    }
-                } else {
-                    alert("Error: " + (resultado.error || resultado.message));
-                }
-            } catch (err) {
-                console.error(err);
-                alert("Ocurrió un error al intentar conectar con el servidor.");
+        if (resultado.status === 'success') {
+            alert("Documento eliminado con éxito.");
+            
+            const fila = boton.closest('tr');
+            const tbody = fila.closest('tbody');
+            fila.remove();
+            
+            if (tbody.children.length === 0) {
+                tbody.closest('.results-section').parentNode.remove();
             }
+            
+            const contenedor = document.getElementById('contenedor-resultados');
+            if (contenedor.children.length === 0) {
+                contenedor.innerHTML = '<div class="no-data">No hay resultados.</div>';
+            }
+        } else {
+            alert("Error: " + (resultado.error || resultado.message));
         }
+    } catch (err) {
+        console.error(err);
+        alert("Ocurrió un error al intentar conectar con el servidor.");
+    }
+}
     </script>
 </body>
 </html>
