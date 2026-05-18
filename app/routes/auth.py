@@ -229,31 +229,26 @@ def purgar_anio(request: Request, anio: int):
     return {"status": "success", "message": f"Año {anio} depurado por completo."}
 
 @router.delete("/eliminar_poliza/{poliza_id}")
-def eliminar_poliza(request: Request, poliza_id: str):
+def eliminar_poliza(request: Request, poliza_id: str, url_archivo: str = None):
     if not request.session.get("usuario_id"):
         raise HTTPException(status_code=401, detail="No autorizado")
     try:
-        # 1. Buscamos el registro para obtener tanto el path_storage como la url_archivo
-        poliza = supabase.table("polizas").select("url_archivo", "path_storage").eq("id", poliza_id).execute()
+        # 1. Si no viene la url desde el frente, la buscamos en la base de datos (respaldo)
+        if not url_archivo:
+            poliza = supabase.table("polizas").select("url_archivo").eq("id", poliza_id).execute()
+            if poliza.data:
+                url_archivo = poliza.data[0]['url_archivo']
         
-        if not poliza.data:
-            return {"error": "No se encontró la póliza especificada."}
-            
-        url_archivo = poliza.data[0]['url_archivo']
-        path_interno = poliza.data[0].get('path_storage')
-
-        # 2. Borramos el archivo físico en el Storage
-        try:
-            # Si no tiene guardado el path_storage (registros viejos), lo extraemos de la URL como antes
-            if not path_interno:
+        # 2. Borramos el archivo físico en el Storage usando la URL directa
+        if url_archivo:
+            try:
                 url_path = urlparse(url_archivo).path
                 path_interno = url_path.split("/object/public/polizas/")[1]
                 path_interno = unquote(path_interno)
-            
-            # Borrado directo e infalible
-            supabase.storage.from_("polizas").remove([path_interno])
-        except Exception as e:
-            print(f"Error al borrar archivo físico del Storage: {e}")
+                
+                supabase.storage.from_("polizas").remove([path_interno])
+            except Exception as e:
+                print(f"Error al borrar archivo físico del Storage: {e}")
 
         # 3. Borramos el registro en la base de datos
         supabase.table("polizas").delete().eq("id", poliza_id).execute()
