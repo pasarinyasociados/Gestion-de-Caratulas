@@ -55,6 +55,21 @@ async def subir_poliza(request: Request, file: UploadFile = File(...), anio: int
         nombre_cliente = nombre_cliente.replace(".pdf", "").replace(".PDF", "").strip()
         nombre_limpio_storage = unicodedata.normalize('NFKD', nombre_original).encode('ascii', 'ignore').decode('ascii')
         
+        # --- VALIDACIÓN DE DUPLICADOS EN LA BASE DE DATOS ---
+        # Buscamos si ya existe una póliza exactamente igual
+        existe_poliza = supabase.table("polizas")\
+            .select("id")\
+            .eq("cliente_nombre", nombre_cliente)\
+            .eq("dia", dia_extraido)\
+            .eq("mes", mes_extraido[:3])\
+            .eq("anio", anio)\
+            .execute()
+            
+        if existe_poliza.data:
+            return {"error": f"La póliza de {nombre_cliente} para el fecha {dia_extraido}/{mes_extraido[:3]}/{anio} ya existe en el sistema."}
+        # ----------------------------------------------------
+
+        # Si no existe, procedemos con el flujo normal de subida física y registro
         file_content = await file.read()
         file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
         supabase.storage.from_("polizas").upload(path=file_path, file=file_content, file_options={"content-type": "application/pdf"})
