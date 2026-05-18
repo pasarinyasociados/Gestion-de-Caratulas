@@ -183,19 +183,19 @@
             
             const tbody = wrapper.querySelector('tbody');
             
-            listaDocumentos.forEach(doc => {
-                const fila = document.createElement('tr');
-                fila.innerHTML = `
-                    <td><strong>${doc.cliente_nombre}</strong></td>
-                    <td>${doc.dia}/${doc.mes}/${doc.anio}</td>
-                    <td class="actions-cell">
-                        <button onclick="verPDF('${doc.url_archivo}')" class="btn-action btn-view"><i class="fa-solid fa-file-pdf"></i> Ver PDF</button>
-                        <button class="btn-action btn-whatsapp" onclick="compartirFisico('${doc.url_archivo}', '${doc.cliente_nombre}.pdf')"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>
-                        <button onclick="eliminarPoliza('${doc.id}', this)" class="btn-action" style="background-color: rgba(239, 68, 110, 0.1); color: var(--danger);"><i class="fa-solid fa-trash-can"></i> Eliminar</button>
-                    </td>
-                `;
-                tbody.appendChild(fila);
-            });
+listaDocumentos.forEach(doc => {
+    const fila = document.createElement('tr');
+    fila.innerHTML = `
+        <td><strong>${doc.cliente_nombre}</strong></td>
+        <td>${doc.dia}/${doc.mes}/${doc.anio}</td>
+        <td class="actions-cell">
+            <button onclick="verPDF('${doc.url_archivo}')" class="btn-action btn-view"><i class="fa-solid fa-file-pdf"></i> Ver PDF</button>
+            <button class="btn-action btn-whatsapp" onclick="compartirFisico('${doc.url_archivo}', '${doc.cliente_nombre}.pdf')"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>
+            <button onclick="eliminarPoliza('${doc.id}', '${doc.url_archivo}', this)" class="btn-action" style="background-color: rgba(239, 68, 110, 0.1); color: var(--danger);"><i class="fa-solid fa-trash-can"></i> Eliminar</button>
+        </td>
+    `;
+    tbody.appendChild(fila);
+});
             
             return wrapper;
         }
