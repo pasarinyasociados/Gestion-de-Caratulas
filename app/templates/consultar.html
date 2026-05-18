@@ -140,6 +140,32 @@
                 }
             } catch (e) { console.error(e); }
         }
+
+        // FUNCIÓN PARA ELIMINAR UNA PÓLIZA INDIVIDUAL
+        async function eliminarPoliza(polizaId, boton) {
+            // Confirmación nativa para evitar errores de dedo
+            if (!confirm("¿Estás completamente seguro de que deseas eliminar esta póliza y su archivo físico? Esta acción no se puede deshacer.")) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/eliminar_poliza/${polizaId}`, {
+                    method: 'DELETE'
+                });
+                const resultado = await response.json();
+
+                if (resultado.status === 'success') {
+                    alert("Póliza eliminada con éxito.");
+                    // Borramos la fila de la tabla visualmente sin tener que recargar toda la página
+                    boton.closest('tr').remove();
+                } else {
+                    alert("Error: " + (resultado.error || resultado.message));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Ocurrió un error al intentar conectar con el servidor.");
+            }
+        }
     </script>
 </body>
 </html>
