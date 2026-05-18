@@ -88,7 +88,7 @@ async def subir_poliza(
         # 3. Subir archivo físico al Storage
         file_content = await file.read()
         file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
-        supabase.storage.from_("polizas").upload(path=file_path, file=file_content, file_options={"content-type": "application/pdf"})
+        supabase.storage.from_("polizas").upload(path=file_path, file=file_content, file_options={"content-type": "application/pdf", "true"})
         url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
 
         # 4. Insertar en la Base de Datos incluyendo la columna de control 'path_storage'
