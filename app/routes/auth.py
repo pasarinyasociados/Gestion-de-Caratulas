@@ -233,24 +233,25 @@ def eliminar_poliza(request: Request, poliza_id: str, url_archivo: str = None):
     if not request.session.get("usuario_id"):
         raise HTTPException(status_code=401, detail="No autorizado")
     try:
-        # 1. Si no viene la url desde el frente, la buscamos en la base de datos (respaldo)
         if not url_archivo:
             poliza = supabase.table("polizas").select("url_archivo").eq("id", poliza_id).execute()
             if poliza.data:
                 url_archivo = poliza.data[0]['url_archivo']
         
-        # 2. Borramos el archivo físico en el Storage usando la URL directa
         if url_archivo:
             try:
                 url_path = urlparse(url_archivo).path
                 path_interno = url_path.split("/object/public/polizas/")[1]
-                path_interno = unquote(path_interno)
                 
+                # DOBLE DECODIFICACIÓN: Asegura que %20 se vuelva un espacio real
+                path_interno = unquote(unquote(path_interno))
+                
+                # Borrado físico real en el Storage
                 supabase.storage.from_("polizas").remove([path_interno])
             except Exception as e:
                 print(f"Error al borrar archivo físico del Storage: {e}")
 
-        # 3. Borramos el registro en la base de datos
+        # Borramos el registro en la base de datos
         supabase.table("polizas").delete().eq("id", poliza_id).execute()
         
         return {"status": "success", "message": "Documento eliminado correctamente."}
