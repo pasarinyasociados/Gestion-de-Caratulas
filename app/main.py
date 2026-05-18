@@ -1,4 +1,5 @@
-import os  # <-- Agregado arriba sin tocar nada más
+import os
+from app.database import supabase
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
