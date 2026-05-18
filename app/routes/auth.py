@@ -1,4 +1,5 @@
 import io
+import re
 import zipfile
 from datetime import datetime
 from fastapi import APIRouter, Form, Request, File, UploadFile, HTTPException
@@ -44,43 +45,70 @@ def buscar_poliza(request: Request, cliente: str = None, dia: str = None, mes: s
     return resultado.data if resultado.data else {"error": "No se encontraron pólizas"}
 
 @router.post("/subir_poliza")
-async def subir_poliza(request: Request, file: UploadFile = File(...), anio: int = Form(...)):
+async def subir_poliza(
+    request: Request, 
+    file: UploadFile = File(...), 
+    anio: int = Form(...),
+    tipo: str = Form("poliza")  # Recibimos el tipo, si no viene por defecto es poliza
+):
     if not request.session.get("usuario_id"):
         raise HTTPException(status_code=401, detail="No autorizado")
     try:
         nombre_original = file.filename.strip()
+        
+        # 1. Extraer día y mes (Ej: "04 MAY_...")
         dia_extraido = int(nombre_original[:2])
         mes_extraido = nombre_original[2:6].replace("_", "").strip().upper()
+        
+        # 2. Aislar la parte del cliente
         nombre_cliente = nombre_original.split("_", 1)[1] if "_" in nombre_original else nombre_original[6:]
         nombre_cliente = nombre_cliente.replace(".pdf", "").replace(".PDF", "").strip()
+        
+        # --- FILTRO INTELIGENTE: LIMPIEZA DE COLA (FOLIOS/NÚMEROS/ESPACIOS AL FINAL) ---
+        # Esta expresión regular busca un guion bajo seguido de números que estén al final
+        # de la cadena (ej: _12313_26_22001995) y los elimina.
+        nombre_cliente = re.sub(r'_\d+.*$', '', nombre_cliente)
+        # Limpieza final por si quedaron espacios o guiones sueltos
+        nombre_cliente = nombre_cliente.replace("_", " ").strip()
+        
+        # Nombre limpio para guardar el archivo físico en Storage
         nombre_limpio_storage = unicodedata.normalize('NFKD', nombre_original).encode('ascii', 'ignore').decode('ascii')
         
         # --- VALIDACIÓN DE DUPLICADOS EN LA BASE DE DATOS ---
-        # Buscamos si ya existe una póliza exactamente igual
+        # Ahora busca duplicados tomando en cuenta también el TIPO de documento
         existe_poliza = supabase.table("polizas")\
             .select("id")\
             .eq("cliente_nombre", nombre_cliente)\
             .eq("dia", dia_extraido)\
             .eq("mes", mes_extraido[:3])\
             .eq("anio", anio)\
+            .eq("tipo", tipo)\
             .execute()
             
         if existe_poliza.data:
-            return {"error": f"La póliza de {nombre_cliente} para el fecha {dia_extraido}/{mes_extraido[:3]}/{anio} ya existe en el sistema."}
-        # ----------------------------------------------------
-
-        # Si no existe, procedemos con el flujo normal de subida física y registro
+            return {"error": f"El documento de tipo '{tipo}' para {nombre_cliente} con fecha {dia_extraido}/{mes_extraido[:3]}/{anio} ya existe."}
+        
+        # 3. Subir archivo físico al Storage en su respectiva carpeta de año y mes
         file_content = await file.read()
         file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
         supabase.storage.from_("polizas").upload(path=file_path, file=file_content, file_options={"content-type": "application/pdf"})
         url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
 
-        data = {"cliente_nombre": nombre_cliente, "dia": dia_extraido, "mes": mes_extraido[:3], "anio": anio, "url_archivo": url_archivo}
+        # 4. Insertar en la Base de Datos incluyendo la nueva columna 'tipo'
+        data = {
+            "cliente_nombre": nombre_cliente, 
+            "dia": dia_extraido, 
+            "mes": mes_extraido[:3], 
+            "anio": anio, 
+            "url_archivo": url_archivo,
+            "tipo": tipo
+        }
         supabase.table("polizas").insert(data).execute()
         return {"message": "Exito"}
+        
     except Exception as e:
         return {"error": str(e)}
-
+        
 @router.get("/usuarios_lista")
 def listar_usuarios(request: Request):
     if not request.session.get("usuario_id") or request.session.get("usuario_rol") != "admin":
