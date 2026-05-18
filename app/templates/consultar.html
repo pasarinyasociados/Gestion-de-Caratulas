@@ -113,6 +113,7 @@
                         <td class="actions-cell">
                             <button onclick="verPDF('${poliza.url_archivo}')" class="btn-action btn-view"><i class="fa-solid fa-file-pdf"></i> Ver PDF</button>
                             <button class="btn-action btn-whatsapp" onclick="compartirFisico('${poliza.url_archivo}', '${poliza.cliente_nombre}.pdf')"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>
+                            <button onclick="eliminarPoliza('${poliza.id}', this)" class="btn-action" style="background-color: rgba(239, 68, 110, 0.1); color: var(--danger);"><i class="fa-solid fa-trash-can"></i> Eliminar</button>
                         </td>`;
                     tabla.appendChild(fila);
                 });
