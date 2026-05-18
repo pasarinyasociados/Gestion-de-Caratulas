@@ -37,18 +37,31 @@ def panel_pantalla(request: Request):
 @app.delete("/eliminar_poliza/{poliza_id}")
 async def eliminar_poliza(poliza_id: str):
     try:
-        # Usamos el objeto supabase que ya tienes configurado en tu proyecto
+        # 1. Buscamos primero la póliza para obtener la URL de su archivo físico antes de borrarla
+        poliza = supabase.table("polizas").select("url_archivo").eq("id", poliza_id).execute()
+        
+        if not poliza.data:
+            return {"error": "No se encontró la póliza especificada."}
+            
+        url_archivo = poliza.data[0]['url_archivo']
+
+        # 2. Borramos el archivo físico en el Storage de Supabase
+        try:
+            path_interno = url_archivo.split("/polizas/")[1]
+            supabase.storage.from_("polizas").remove([path_interno])
+        except Exception as e:
+            print(f"Error al borrar archivo físico del Storage: {e}")
+            # Nota: Continuamos el flujo por si el archivo ya no existía en Storage
+
+        # 3. Borramos el registro en la base de datos
         respuesta = supabase.table("polizas").delete().eq("id", poliza_id).execute()
         
-        if len(respuesta.data) == 0:
-            return {"error": "No se encontró la póliza o no se pudo eliminar."}
-            
-        return {"success": True, "mensaje": "Póliza eliminada correctamente."}
+        return {"success": True, "mensaje": "Póliza y archivo eliminados correctamente."}
         
     except Exception as e:
-        print(f"Error al eliminar: {e}")
+        print(f"Error general al eliminar: {e}")
         return {"error": str(e)}
-
+        
 @app.get("/subir_pantalla")
 def subir_pantalla(request: Request):
     if not request.session.get("usuario_id"):
