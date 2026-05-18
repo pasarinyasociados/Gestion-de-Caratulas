@@ -50,7 +50,7 @@ async def subir_poliza(
     request: Request, 
     file: UploadFile = File(...), 
     anio: int = Form(...),
-    tipo: str = Form("poliza")  # Recibimos el tipo, si no viene por defecto es poliza
+    tipo: str = Form("poliza")
 ):
     if not request.session.get("usuario_id"):
         raise HTTPException(status_code=401, detail="No autorizado")
@@ -65,7 +65,7 @@ async def subir_poliza(
         nombre_cliente = nombre_original.split("_", 1)[1] if "_" in nombre_original else nombre_original[6:]
         nombre_cliente = nombre_cliente.replace(".pdf", "").replace(".PDF", "").strip()
         
-        # --- FILTRO INTELIGENTE: LIMPIEZA DE COLA (FOLIOS/NÚMEROS/ESPACIOS AL FINAL) ---
+        # --- FILTRO INTELIGENTE: LIMPIEZA DE COLA ---
         nombre_cliente = re.sub(r'_\d+.*$', '', nombre_cliente)
         nombre_cliente = nombre_cliente.replace("_", " ").strip()
         
@@ -85,19 +85,20 @@ async def subir_poliza(
         if existe_poliza.data:
             return {"error": f"El documento de tipo '{tipo}' para {nombre_cliente} con fecha {dia_extraido}/{mes_extraido[:3]}/{anio} ya existe."}
         
-        # 3. Subir archivo físico al Storage en su respectiva carpeta de año y mes
+        # 3. Subir archivo físico al Storage
         file_content = await file.read()
         file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
         supabase.storage.from_("polizas").upload(path=file_path, file=file_content, file_options={"content-type": "application/pdf"})
         url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
 
-        # 4. Insertar en la Base de Datos incluyendo la nueva columna 'tipo'
+        # 4. Insertar en la Base de Datos incluyendo la columna de control 'path_storage'
         data = {
             "cliente_nombre": nombre_cliente, 
             "dia": dia_extraido, 
             "mes": mes_extraido[:3], 
             "anio": anio, 
             "url_archivo": url_archivo,
+            "path_storage": file_path,  # <--- Guardamos el path exacto sin codificar
             "tipo": tipo
         }
         supabase.table("polizas").insert(data).execute()
@@ -181,10 +182,12 @@ async def descargar_anio(request: Request, anio: str):
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for p in polizas.data:
             try:
-                # Extracción mejorada y segura usando urlparse y unquote
-                url_path = urlparse(p['url_archivo']).path
-                path_interno = url_path.split("/object/public/polizas/")[1]
-                path_interno = unquote(path_interno)
+                # Usa el path directo si existe, si no, usa el fallback de URL
+                path_interno = p.get('path_storage')
+                if not path_interno:
+                    url_path = urlparse(p['url_archivo']).path
+                    path_interno = url_path.split("/object/public/polizas/")[1]
+                    path_interno = unquote(path_interno)
                 
                 archivo_binario = supabase.storage.from_("polizas").download(path_interno)
                 zip_file.writestr(f"{p['anio']}/{p['mes']}/{p['cliente_nombre']}_{p['dia']}.pdf", archivo_binario)
@@ -207,9 +210,11 @@ def purgar_anio(request: Request, anio: int):
     archivos_a_borrar = []
     for p in polizas.data:
         try:
-            url_path = urlparse(p['url_archivo']).path
-            path_interno = url_path.split("/object/public/polizas/")[1]
-            path_interno = unquote(path_interno)
+            path_interno = p.get('path_storage')
+            if not path_interno:
+                url_path = urlparse(p['url_archivo']).path
+                path_interno = url_path.split("/object/public/polizas/")[1]
+                path_interno = unquote(path_interno)
             archivos_a_borrar.append(path_interno)
         except:
             continue
@@ -228,31 +233,32 @@ def eliminar_poliza(request: Request, poliza_id: str):
     if not request.session.get("usuario_id"):
         raise HTTPException(status_code=401, detail="No autorizado")
     try:
-        # 1. Buscamos primero la póliza para obtener la URL de su archivo físico antes de borrarla
-        poliza = supabase.table("polizas").select("url_archivo").eq("id", poliza_id).execute()
+        # 1. Buscamos el registro para obtener tanto el path_storage como la url_archivo
+        poliza = supabase.table("polizas").select("url_archivo", "path_storage").eq("id", poliza_id).execute()
         
         if not poliza.data:
             return {"error": "No se encontró la póliza especificada."}
             
         url_archivo = poliza.data[0]['url_archivo']
+        path_interno = poliza.data[0].get('path_storage')
 
-        # 2. Borramos el archivo físico en el Storage de Supabase usando decodificación limpia
+        # 2. Borramos el archivo físico en el Storage
         try:
-            # Convierte '/storage/v1/object/public/polizas/2026/MAYO/archivo%20con%20espacios.pdf' 
-            # en el path limpio: '2026/MAYO/archivo con espacios.pdf'
-            url_path = urlparse(url_archivo).path
-            path_interno = url_path.split("/object/public/polizas/")[1]
-            path_interno = unquote(path_interno)  # Esto limpia los %20 y caracteres especiales
+            # Si no tiene guardado el path_storage (registros viejos), lo extraemos de la URL como antes
+            if not path_interno:
+                url_path = urlparse(url_archivo).path
+                path_interno = url_path.split("/object/public/polizas/")[1]
+                path_interno = unquote(path_interno)
             
+            # Borrado directo e infalible
             supabase.storage.from_("polizas").remove([path_interno])
         except Exception as e:
             print(f"Error al borrar archivo físico del Storage: {e}")
-            # Continuamos por si el archivo ya no existía en el Storage físico
 
         # 3. Borramos el registro en la base de datos
         supabase.table("polizas").delete().eq("id", poliza_id).execute()
         
-        return {"status": "success", "message": "Documento y archivo físico eliminados correctamente."}
+        return {"status": "success", "message": "Documento eliminado correctamente."}
         
     except Exception as e:
         print(f"Error general al eliminar: {e}")
