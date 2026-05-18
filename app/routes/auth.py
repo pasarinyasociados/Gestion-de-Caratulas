@@ -173,3 +173,33 @@ def purgar_anio(request: Request, anio: int):
             
     supabase.table("polizas").delete().eq("anio", anio).execute()
     return {"status": "success", "message": f"Año {anio} depurado por completo."}
+
+@router.delete("/eliminar_poliza/{poliza_id}")
+def eliminar_poliza(request: Request, poliza_id: str):
+    if not request.session.get("usuario_id"):
+        raise HTTPException(status_code=401, detail="No autorizado")
+    try:
+        # 1. Buscamos primero la póliza para obtener la URL de su archivo físico antes de borrarla
+        poliza = supabase.table("polizas").select("url_archivo").eq("id", poliza_id).execute()
+        
+        if not poliza.data:
+            return {"error": "No se encontró la póliza especificada."}
+            
+        url_archivo = poliza.data[0]['url_archivo']
+
+        # 2. Borramos el archivo físico en el Storage de Supabase
+        try:
+            path_interno = url_archivo.split("/polizas/")[1]
+            supabase.storage.from_("polizas").remove([path_interno])
+        except Exception as e:
+            print(f"Error al borrar archivo físico del Storage: {e}")
+            # Continuamos por si el archivo ya no existía en el Storage físico
+
+        # 3. Borramos el registro en la base de datos
+        supabase.table("polizas").delete().eq("id", poliza_id).execute()
+        
+        return {"status": "success", "message": "Póliza y archivo eliminados correctamente."}
+        
+    except Exception as e:
+        print(f"Error general al eliminar: {e}")
+        return {"error": str(e)}
