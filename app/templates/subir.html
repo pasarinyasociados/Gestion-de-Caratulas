@@ -83,10 +83,24 @@
 
         <div class="upload-container">
             <form id="upload-form" onsubmit="enviarPoliza(event)">
+                
+                <div class="form-group">
+                    <label>Tipo de Documento</label>
+                    <div style="display: flex; background: var(--bg-dark); padding: 4px; border-radius: 0.5rem; max-width: 250px; border: 1px solid var(--border);">
+                        <button type="button" id="btn-poliza" onclick="seleccionarTipo('poliza')" style="flex: 1; padding: 8px 12px; border: none; border-radius: 0.35rem; cursor: pointer; background-color: var(--primary); color: var(--bg-dark); font-weight: bold; transition: all 0.2s;">
+                            Póliza
+                        </button>
+                        <button type="button" id="id-btn-recibo" onclick="seleccionarTipo('recibo')" style="flex: 1; padding: 8px 12px; border: none; border-radius: 0.35rem; cursor: pointer; background-color: transparent; color: var(--text-muted); transition: all 0.2s;">
+                            Recibo
+                        </button>
+                    </div>
+                    <input type="hidden" id="tipo_documento" name="tipo" value="poliza">
+                </div>
+
                 <div class="form-group">
                     <label for="anio">Año de la Póliza</label>
                     <select id="anio" name="anio" class="form-control">
-                        </select>
+                    </select>
                 </div>
 
                 <div class="form-group">
@@ -107,6 +121,33 @@
     <div id="toast" class="toast"><i id="toast-icon" class="fa-solid"></i> <span id="toast-msg"></span></div>
 
     <script>
+        // Función para alternar visualmente entre Póliza y Recibo
+        function seleccionarTipo(tipo) {
+            const btnPoliza = document.getElementById('btn-poliza');
+            const btnRecibo = document.getElementById('id-btn-recibo');
+            const inputTipo = document.getElementById('tipo_documento');
+            
+            inputTipo.value = tipo;
+            
+            if (tipo === 'poliza') {
+                btnPoliza.style.backgroundColor = "var(--primary)";
+                btnPoliza.style.color = "var(--bg-dark)";
+                btnPoliza.style.fontWeight = "bold";
+                
+                btnRecibo.style.backgroundColor = "transparent";
+                btnRecibo.style.color = "var(--text-muted)";
+                btnRecibo.style.fontWeight = "normal";
+            } else {
+                btnPoliza.style.backgroundColor = "transparent";
+                btnPoliza.style.color = "var(--text-muted)";
+                btnPoliza.style.fontWeight = "normal";
+                
+                btnRecibo.style.backgroundColor = "var(--primary)";
+                btnRecibo.style.color = "var(--bg-dark)";
+                btnRecibo.style.fontWeight = "bold";
+            }
+        }
+
         // Inicializa el selector con los 3 años vigentes automáticamente
         function inicializarAnios() {
             const selectAnio = document.getElementById('anio');
@@ -157,10 +198,12 @@
                 const data = await res.json();
                 
                 if (data.message === "Exito") {
-                    lanzarToast("Póliza cargada e integrada correctamente.", "success");
+                    lanzarToast("Documento cargado e integrado correctamente.", "success");
                     document.getElementById('upload-form').reset();
                     document.getElementById('drop-text').style.display = "block";
                     document.getElementById('file-info').innerText = "";
+                    // Reiniciar el selector visual a póliza por defecto
+                    seleccionarTipo('poliza');
                 } else {
                     lanzarToast(`Error: ${data.error}`, "danger");
                 }
