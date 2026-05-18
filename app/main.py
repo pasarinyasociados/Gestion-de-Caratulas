@@ -34,6 +34,21 @@ def panel_pantalla(request: Request):
         "nombre": request.session.get("usuario_nombre")
     })
 
+@app.delete("/eliminar_poliza/{poliza_id}")
+async def eliminar_poliza(poliza_id: str):
+    try:
+        # Usamos el objeto supabase que ya tienes configurado en tu proyecto
+        respuesta = supabase.table("polizas").delete().eq("id", poliza_id).execute()
+        
+        if len(respuesta.data) == 0:
+            return {"error": "No se encontró la póliza o no se pudo eliminar."}
+            
+        return {"success": True, "mensaje": "Póliza eliminada correctamente."}
+        
+    except Exception as e:
+        print(f"Error al eliminar: {e}")
+        return {"error": str(e)}
+
 @app.get("/subir_pantalla")
 def subir_pantalla(request: Request):
     if not request.session.get("usuario_id"):
