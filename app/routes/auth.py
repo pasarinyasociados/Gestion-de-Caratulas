@@ -7,6 +7,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from app.database import supabase
 from postgrest.exceptions import APIError
 import unicodedata
+from urllib.parse import unquote, urlparse
 
 router = APIRouter()
 
@@ -65,17 +66,13 @@ async def subir_poliza(
         nombre_cliente = nombre_cliente.replace(".pdf", "").replace(".PDF", "").strip()
         
         # --- FILTRO INTELIGENTE: LIMPIEZA DE COLA (FOLIOS/NÚMEROS/ESPACIOS AL FINAL) ---
-        # Esta expresión regular busca un guion bajo seguido de números que estén al final
-        # de la cadena (ej: _12313_26_22001995) y los elimina.
         nombre_cliente = re.sub(r'_\d+.*$', '', nombre_cliente)
-        # Limpieza final por si quedaron espacios o guiones sueltos
         nombre_cliente = nombre_cliente.replace("_", " ").strip()
         
         # Nombre limpio para guardar el archivo físico en Storage
         nombre_limpio_storage = unicodedata.normalize('NFKD', nombre_original).encode('ascii', 'ignore').decode('ascii')
         
         # --- VALIDACIÓN DE DUPLICADOS EN LA BASE DE DATOS ---
-        # Ahora busca duplicados tomando en cuenta también el TIPO de documento
         existe_poliza = supabase.table("polizas")\
             .select("id")\
             .eq("cliente_nombre", nombre_cliente)\
@@ -184,7 +181,11 @@ async def descargar_anio(request: Request, anio: str):
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for p in polizas.data:
             try:
-                path_interno = p['url_archivo'].split("/polizas/")[1]
+                # Extracción mejorada y segura usando urlparse y unquote
+                url_path = urlparse(p['url_archivo']).path
+                path_interno = url_path.split("/object/public/polizas/")[1]
+                path_interno = unquote(path_interno)
+                
                 archivo_binario = supabase.storage.from_("polizas").download(path_interno)
                 zip_file.writestr(f"{p['anio']}/{p['mes']}/{p['cliente_nombre']}_{p['dia']}.pdf", archivo_binario)
             except:
@@ -205,8 +206,13 @@ def purgar_anio(request: Request, anio: int):
         
     archivos_a_borrar = []
     for p in polizas.data:
-        path_interno = p['url_archivo'].split("/polizas/")[1]
-        archivos_a_borrar.append(path_interno)
+        try:
+            url_path = urlparse(p['url_archivo']).path
+            path_interno = url_path.split("/object/public/polizas/")[1]
+            path_interno = unquote(path_interno)
+            archivos_a_borrar.append(path_interno)
+        except:
+            continue
         
     if archivos_a_borrar:
         try:
@@ -230,9 +236,14 @@ def eliminar_poliza(request: Request, poliza_id: str):
             
         url_archivo = poliza.data[0]['url_archivo']
 
-        # 2. Borramos el archivo físico en el Storage de Supabase
+        # 2. Borramos el archivo físico en el Storage de Supabase usando decodificación limpia
         try:
-            path_interno = url_archivo.split("/polizas/")[1]
+            # Convierte '/storage/v1/object/public/polizas/2026/MAYO/archivo%20con%20espacios.pdf' 
+            # en el path limpio: '2026/MAYO/archivo con espacios.pdf'
+            url_path = urlparse(url_archivo).path
+            path_interno = url_path.split("/object/public/polizas/")[1]
+            path_interno = unquote(path_interno)  # Esto limpia los %20 y caracteres especiales
+            
             supabase.storage.from_("polizas").remove([path_interno])
         except Exception as e:
             print(f"Error al borrar archivo físico del Storage: {e}")
@@ -241,7 +252,7 @@ def eliminar_poliza(request: Request, poliza_id: str):
         # 3. Borramos el registro en la base de datos
         supabase.table("polizas").delete().eq("id", poliza_id).execute()
         
-        return {"status": "success", "message": "Póliza y archivo eliminados correctamente."}
+        return {"status": "success", "message": "Documento y archivo físico eliminados correctamente."}
         
     except Exception as e:
         print(f"Error general al eliminar: {e}")
