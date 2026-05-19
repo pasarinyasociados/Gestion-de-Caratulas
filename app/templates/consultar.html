@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - Gestión de Pólizas</title>
+    <title>Consultar Documentos - Gestión de Carátulas</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
@@ -16,15 +16,15 @@
         body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; }
         .sidebar { width: 260px; background-color: var(--bg-card); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
         
-        /* Contenedor con fondo blanco al 50% de transparencia y esquinas redondeadas */
+        /* Contenedor con fondo blanco al 80% de transparencia y esquinas redondeadas */
         .brand { 
             display: flex; 
             justify-content: center; 
             align-items: center; 
             width: 100%;
-            background-color: rgba(255, 255, 255, 0.8); /* Blanco con 50% de opacidad */
+            background-color: rgba(255, 255, 255, 0.8);
             padding: 10px 14px;
-            border-radius: 8px; /* Esquinas redondeadas suaves */
+            border-radius: 8px;
             margin-bottom: 0.5rem;
         }
         .sidebar-logo {
@@ -42,7 +42,6 @@
         .user-profile { display: flex; align-items: center; gap: 0.75rem; background: var(--bg-card); padding: 0.5rem 1rem; border-radius: 2rem; border: 1px solid var(--border); }
         .search-section { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 2rem; margin-bottom: 2rem; }
         
-        /* Ajustado para acomodar el nuevo filtro de tipo de documento */
         .grid-filters { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end; }
         
         .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -51,7 +50,6 @@
         .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; height: 46px; }
         .btn-primary { background-color: var(--primary); color: var(--bg-dark); }
         
-        /* Contenedor principal de bloques de resultados */
         .results-container { display: flex; flex-direction: column; gap: 2rem; }
         .group-title { font-size: 1.25rem; font-weight: 700; color: var(--section-title); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem; }
         .group-title.polizas-header { color: #38bdf8; }
@@ -75,7 +73,7 @@
         </div>
         <ul class="menu">
             <li class="menu-item active"><a href="/panel"><i class="fa-solid fa-magnifying-glass"></i> Consultar</a></li>
-            <li class="menu-item"><a href="/subir_pantalla"><i class="fa-solid fa-cloud-arrow-up"></i> Cargar Póliza</a></li>
+            <li class="menu-item"><a href="/subir_pantalla"><i class="fa-solid fa-cloud-arrow-up"></i> Cargar Documentos</a></li>
             {% if rol == 'admin' %}
             <li class="menu-item"><a href="/usuarios_pantalla"><i class="fa-solid fa-users-gear"></i> Usuarios</a></li>
             <li class="menu-item"><a href="/mantenimiento_pantalla"><i class="fa-solid fa-database"></i> Mantenimiento</a></li>
@@ -136,7 +134,6 @@
                     return; 
                 }
 
-                // Filtrar localmente en el frontend por tipo si el usuario seleccionó uno específico
                 let datosFiltrados = datos;
                 if (filtroTipo !== "") {
                     datosFiltrados = datos.filter(doc => doc.tipo === filtroTipo);
@@ -147,16 +144,13 @@
                     return;
                 }
 
-                // Separar los documentos en dos colecciones
                 const polizas = datosFiltrados.filter(doc => !doc.tipo || doc.tipo === 'poliza');
                 const recibos = datosFiltrados.filter(doc => doc.tipo === 'recibo');
 
-                // 1. Renderizar Bloque de Pólizas (si existen)
                 if (polizas.length > 0) {
                     contenedor.appendChild(crearBloqueTabla("Pólizas Encontradas", "polizas-header", "fa-shield-halved", polizas));
                 }
 
-                // 2. Renderizar Bloque de Recibos (si existen)
                 if (recibos.length > 0) {
                     contenedor.appendChild(crearBloqueTabla("Recibos Encontrados", "recibos-header", "fa-file-invoice-dollar", recibos));
                 }
@@ -167,7 +161,6 @@
             }
         }
 
-        // Función auxiliar pro para construir los bloques de tablas independientes
         function crearBloqueTabla(titulo, claseHeader, icono, listaDocumentos) {
             const wrapper = document.createElement('div');
             
@@ -183,24 +176,23 @@
             
             const tbody = wrapper.querySelector('tbody');
             
-listaDocumentos.forEach(doc => {
-    const fila = document.createElement('tr');
-    fila.innerHTML = `
-        <td><strong>${doc.cliente_nombre}</strong></td>
-        <td>${doc.dia}/${doc.mes}/${doc.anio}</td>
-        <td class="actions-cell">
-            <button onclick="verPDF('${doc.url_archivo}')" class="btn-action btn-view"><i class="fa-solid fa-file-pdf"></i> Ver PDF</button>
-            <button class="btn-action btn-whatsapp" onclick="compartirFisico('${doc.url_archivo}', '${doc.cliente_nombre}.pdf')"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>
-            <button onclick="eliminarPoliza('${doc.id}', '${doc.url_archivo}', this)" class="btn-action" style="background-color: rgba(239, 68, 110, 0.1); color: var(--danger);"><i class="fa-solid fa-trash-can"></i> Eliminar</button>
-        </td>
-    `;
-    tbody.appendChild(fila);
-});
+            listaDocumentos.forEach(doc => {
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td><strong>${doc.cliente_nombre}</strong></td>
+                    <td>${doc.dia}/${doc.mes}/${doc.anio}</td>
+                    <td class="actions-cell">
+                        <button onclick="verPDF('${doc.url_archivo}')" class="btn-action btn-view"><i class="fa-solid fa-file-pdf"></i> Ver PDF</button>
+                        <button class="btn-action btn-whatsapp" onclick="compartirFisico('${doc.url_archivo}', '${doc.cliente_nombre}.pdf')"><i class="fa-brands fa-whatsapp"></i> WhatsApp</button>
+                        <button onclick="eliminarPoliza('${doc.id}', '${doc.url_archivo}', this)" class="btn-action" style="background-color: rgba(239, 68, 110, 0.1); color: var(--danger);"><i class="fa-solid fa-trash-can"></i> Eliminar</button>
+                    </td>
+                `;
+                tbody.appendChild(fila);
+            });
             
             return wrapper;
         }
 
-        // VENTANA INDEPENDIENTE FORZADA (Evita pestañas nuevas)
         function verPDF(url) {
             const ancho = 900; const alto = 800;
             const x = (screen.width / 2) - (ancho / 2);
@@ -208,7 +200,6 @@ listaDocumentos.forEach(doc => {
             window.open(url, 'Visualizador', `width=${ancho},height=${alto},left=${x},top=${y},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
         }
 
-        // COMPARTIR DOCUMENTO FÍSICO POR WHATSAPP
         async function compartirFisico(url, nombre) {
             try {
                 const res = await fetch(url); const blob = await res.blob();
@@ -221,42 +212,40 @@ listaDocumentos.forEach(doc => {
             } catch (e) { console.error(e); }
         }
 
-// FUNCIÓN PARA ELIMINAR UN DOCUMENTO (PÓLIZA O RECIBO)
-async function eliminarPoliza(polizaId, urlArchivo, boton) {
-    if (!confirm("¿Estás completamente seguro de que deseas eliminar este documento y su archivo físico? Esta acción no se puede deshacer.")) {
-        return;
-    }
-
-    try {
-        // Le pasamos la URL como parámetro para que el backend sepa exactamente qué archivo borrar
-        const response = await fetch(`/eliminar_poliza/${polizaId}?url_archivo=${encodeURIComponent(urlArchivo)}`, {
-            method: 'DELETE'
-        });
-        const resultado = await response.json();
-
-        if (resultado.status === 'success') {
-            alert("Documento eliminado con éxito.");
-            
-            const fila = boton.closest('tr');
-            const tbody = fila.closest('tbody');
-            fila.remove();
-            
-            if (tbody.children.length === 0) {
-                tbody.closest('.results-section').parentNode.remove();
+        async function eliminarPoliza(polizaId, urlArchivo, boton) {
+            if (!confirm("¿Estás completamente seguro de que deseas eliminar este documento y su archivo físico? Esta acción no se puede deshacer.")) {
+                return;
             }
-            
-            const contenedor = document.getElementById('contenedor-resultados');
-            if (contenedor.children.length === 0) {
-                contenedor.innerHTML = '<div class="no-data">No hay resultados.</div>';
+
+            try {
+                const response = await fetch(`/eliminar_poliza/${polizaId}?url_archivo=${encodeURIComponent(urlArchivo)}`, {
+                    method: 'DELETE'
+                });
+                const resultado = await response.json();
+
+                if (resultado.status === 'success') {
+                    alert("Documento eliminado con éxito.");
+                    
+                    const fila = boton.closest('tr');
+                    const tbody = fila.closest('tbody');
+                    fila.remove();
+                    
+                    if (tbody.children.length === 0) {
+                        tbody.closest('.results-section').parentNode.remove();
+                    }
+                    
+                    const contenedor = document.getElementById('contenedor-resultados');
+                    if (contenedor.children.length === 0) {
+                        contenedor.innerHTML = '<div class="no-data">No hay resultados.</div>';
+                    }
+                } else {
+                    alert("Error: " + (resultado.error || resultado.message));
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Ocurrió un error al intentar conectar con el servidor.");
             }
-        } else {
-            alert("Error: " + (resultado.error || resultado.message));
         }
-    } catch (err) {
-        console.error(err);
-        alert("Ocurrió un error al intentar conectar con el servidor.");
-    }
-}
     </script>
 </body>
 </html>
