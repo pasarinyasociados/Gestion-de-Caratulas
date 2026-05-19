@@ -6,7 +6,6 @@ from fastapi import APIRouter, Form, Request, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from app.database import supabase
 from postgrest.exceptions import APIError
-from storage3.util import FileOptions
 import unicodedata
 from urllib.parse import unquote, urlparse
 
@@ -71,7 +70,6 @@ async def subir_poliza(
         nombre_cliente = nombre_cliente.replace("_", " ").strip()
         
         # --- VALIDACIÓN ANTIDUPLICADOS (ANTES DE SUBIR) ---
-        # Buscamos si ya existe exactamente el mismo registro en la BD
         existe_poliza = supabase.table("polizas")\
             .select("id")\
             .eq("cliente_nombre", nombre_cliente)\
@@ -81,23 +79,19 @@ async def subir_poliza(
             .eq("tipo", tipo)\
             .execute()
             
-        # Si la póliza ya existe, detenemos el proceso y avisamos
         if existe_poliza.data:
             return {"error": "duplicado", "message": f"La póliza de {nombre_cliente} para el día {dia_extraido} de {mes_extraido[:3]} ya existe."}
 
         # --- SI ES NUEVA, PROCEDEMOS CON LA SUBIDA FÍSICA ---
-        # Nombre limpio para guardar el archivo físico en Storage
         nombre_limpio_storage = unicodedata.normalize('NFKD', nombre_original).encode('ascii', 'ignore').decode('ascii')
-        
-        # Generamos la ruta física del archivo
         file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
 
-        # Subir archivo físico usando FileOptions nativo (con strings para evitar errores de tipo)
+        # Subir usando diccionario nativo con "true" como texto para evitar errores de tipo
         file_content = await file.read()
         supabase.storage.from_("polizas").upload(
             path=file_path, 
             file=file_content, 
-            file_options=FileOptions(content_type="application/pdf", upsert="true")
+            file_options={"content-type": "application/pdf", "x-upsert": "true"}
         )
         url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
             
@@ -111,9 +105,7 @@ async def subir_poliza(
             "tipo": tipo
         }
 
-        # Insertamos el nuevo registro limpio en la base de datos
         supabase.table("polizas").insert(data).execute()
-            
         return {"message": "Exito"}
         
     except Exception as e:
@@ -180,7 +172,7 @@ def detectar_obsoleto(request: Request):
 @router.get("/descargar_ano/{anio}")
 async def descargar_anio(request: Request, anio: str):
     if not request.session.get("usuario_id") or request.session.get("usuario_rol") != "admin":
-        raise HTTPException(status_code=401, detail="No autorizado")
+        raise HTTPException(status_code=404, detail="No autorizado")
     
     query = supabase.table("polizas").select("*")
     if anio != "todos":
