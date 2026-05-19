@@ -168,25 +168,21 @@
 function validarNombreArchivo(nombre) {
     const nombreLimpio = nombre.replace(/\.[^/.]+$/, ""); // Quitar extensión (.pdf)
     
-    // EXPRESIÓN REGULAR ESTRICTA:
-    // 1. Debe empezar con números y espacios (Ej: 12 ENE_)
-    // 2. El nombre del cliente solo puede tener letras, espacios y puntos (Ma. Teresa)
-    // 3. Opcionalmente puede llevar un guion bajo y números al final (_1, _2)
-    // NO se permiten guiones medios (-), ni letras locas al final.
-    const formatoValido = /^\d+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ.]+\s+_[0-9]+$/;
-    const formatoNormal = /^\d+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ.\s]+$/;
+    // EXPRESIÓN REGULAR EXACTA:
+    // ^\d+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+\s+ -> Empieza con "DD MES_"
+    // [A-ZÁÉÍÓÚÑa-záéíóúñ\s.]+         -> El nombre/apellidos (solo letras, espacios y puntos como en Ma.)
+    // (_\d+)?$                         -> OPCIONAL: Un guion bajo y números al final. ¡Y se acaba el texto!
+    const formatoValido = /^\d+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ\s.]+(_\d+)?$/;
     
-    // Si cumple cualquiera de los dos formatos permitidos, es válido
-    if (formatoNormal.test(nombreLimpio) || formatoValido.test(nombreLimpio)) {
+    if (formatoValido.test(nombreLimpio)) {
         return { valido: true };
     }
     
-    // Si no cumple, identificamos si es por culpa de un guion medio o texto extra
-    if (nombreLimpio.includes('-')) {
-        return { valido: false, motivo: "No se permiten guiones medios (-). Si es un archivo extra, usa guion bajo y número (Ej: _1)." };
-    }
-    
-    return { valido: false, motivo: "Formato incorrecto. Recuerda el orden: DD MES_NOMBRE CLIENTE o NOMBRE CLIENTE_1" };
+    // Si no pasó la prueba, revisamos si es porque metieron guiones medios o texto raro al final
+    return { 
+        valido: false, 
+        motivo: "Formato no permitido. Después del apellido solo se admite un guion bajo y luego el numero de poliza (Ej: _12345)" 
+    };
 }
         
         function mostrarNombreArchivo() {
