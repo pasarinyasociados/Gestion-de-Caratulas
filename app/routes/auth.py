@@ -6,6 +6,7 @@ from fastapi import APIRouter, Form, Request, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from app.database import supabase
 from postgrest.exceptions import APIError
+from storage3.util import FileOptions
 import unicodedata
 from urllib.parse import unquote, urlparse
 
