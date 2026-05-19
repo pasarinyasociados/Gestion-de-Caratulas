@@ -80,23 +80,23 @@ async def subir_poliza(
             .eq("tipo", tipo)\
             .execute()
             
-        # Si la póliza ya existe, detenemos el proceso y avisamos al usuario
+        # Si la póliza ya existe, detenemos el proceso y avisamos
         if existe_poliza.data:
             return {"error": "duplicado", "message": f"La póliza de {nombre_cliente} para el día {dia_extraido} de {mes_extraido[:3]} ya existe."}
 
-        # --- SI ES NUEVA, PROCEDEMOS CON LA SUBIDA ---
+        # --- SI ES NUEVA, PROCEDEMOS CON LA SUBIDA FÍSICA ---
         # Nombre limpio para guardar el archivo físico en Storage
         nombre_limpio_storage = unicodedata.normalize('NFKD', nombre_original).encode('ascii', 'ignore').decode('ascii')
         
         # Generamos la ruta física del archivo
         file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
 
-        # Subir archivo físico al Storage
+        # Subir archivo físico usando FileOptions nativo (con strings para evitar errores de tipo)
         file_content = await file.read()
         supabase.storage.from_("polizas").upload(
             path=file_path, 
             file=file_content, 
-            file_options={"content-type": "application/pdf", "upsert": True}
+            file_options=FileOptions(content_type="application/pdf", upsert="true")
         )
         url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
             
