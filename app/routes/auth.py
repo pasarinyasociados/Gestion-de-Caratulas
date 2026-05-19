@@ -73,7 +73,20 @@ async def subir_poliza(
         # Nombre limpio para guardar el archivo físico en Storage
         nombre_limpio_storage = unicodedata.normalize('NFKD', nombre_original).encode('ascii', 'ignore').decode('ascii')
         
-        # --- VALIDACIÓN DE DUPLICADOS EN LA BASE DE DATOS ---
+        # Generamos la ruta física del archivo
+        file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
+
+        # 3. Subir archivo físico al Storage (Pisa el archivo fantasma si ya existía)
+        file_content = await file.read()
+        supabase.storage.from_("polizas").upload(
+            path=file_path, 
+            file=file_content, 
+            file_options=FileOptions(content_type="application/pdf", upsert=True)
+        )
+        url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
+
+        # --- VALIDACIÓN Y REEMPLAZO EN LA BASE DE DATOS ---
+        # Buscamos si ya existe el registro para actualizarlo o meter uno nuevo
         existe_poliza = supabase.table("polizas")\
             .select("id")\
             .eq("cliente_nombre", nombre_cliente)\
@@ -83,30 +96,24 @@ async def subir_poliza(
             .eq("tipo", tipo)\
             .execute()
             
-        if existe_poliza.data:
-            return {"error": f"El documento de tipo '{tipo}' para {nombre_cliente} con fecha {dia_extraido}/{mes_extraido[:3]}/{anio} ya existe."}
-        
-        # 3. Subir archivo físico al Storage
-        file_content = await file.read()
-        file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
-supabase.storage.from_("polizas").upload(
-    path=file_path, 
-    file=file_content, 
-    file_options=FileOptions(content_type="application/pdf", upsert=True)
-)
-        url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
-
-        # 4. Insertar en la Base de Datos incluyendo la columna de control 'path_storage'
         data = {
             "cliente_nombre": nombre_cliente, 
             "dia": dia_extraido, 
             "mes": mes_extraido[:3], 
             "anio": anio, 
             "url_archivo": url_archivo,
-            "path_storage": file_path,  # <--- Guardamos el path exacto sin codificar
+            "path_storage": file_path,
             "tipo": tipo
         }
-        supabase.table("polizas").insert(data).execute()
+
+        if existe_poliza.data:
+            # Si el registro ya existía en la BD, lo actualizamos para evitar duplicados
+            id_existente = existe_poliza.data[0]['id']
+            supabase.table("polizas").update(data).eq("id", id_existente).execute()
+        else:
+            # Si es completamente nuevo, se inserta normal
+            supabase.table("polizas").insert(data).execute()
+            
         return {"message": "Exito"}
         
     except Exception as e:
@@ -187,7 +194,6 @@ async def descargar_anio(request: Request, anio: str):
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for p in polizas.data:
             try:
-                # Usa el path directo si existe, si no, usa el fallback de URL
                 path_interno = p.get('path_storage')
                 if not path_interno:
                     url_path = urlparse(p['url_archivo']).path
@@ -247,18 +253,13 @@ def eliminar_poliza(request: Request, poliza_id: str, url_archivo: str = None):
             try:
                 url_path = urlparse(url_archivo).path
                 path_interno = url_path.split("/object/public/polizas/")[1]
-                
-                # DOBLE DECODIFICACIÓN: Asegura que %20 se vuelva un espacio real
                 path_interno = unquote(unquote(path_interno))
                 
-                # Borrado físico real en el Storage
                 supabase.storage.from_("polizas").remove([path_interno])
             except Exception as e:
                 print(f"Error al borrar archivo físico del Storage: {e}")
 
-        # Borramos el registro en la base de datos
         supabase.table("polizas").delete().eq("id", poliza_id).execute()
-        
         return {"status": "success", "message": "Documento eliminado correctamente."}
         
     except Exception as e:
