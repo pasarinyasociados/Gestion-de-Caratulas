@@ -166,36 +166,30 @@
 
         // --- CANDADO INTELIGENTE DE VALIDACIÓN DE NOMBRES ---
 function validarNombreArchivo(nombre) {
-    // 1. Pasamos el nombre a mayúsculas y le quitamos el ".pdf" para analizarlo limpio
+    // 1. Limpiamos la extensión y pasamos a mayúsculas
     const nombreLimpio = nombre.toUpperCase().replace(".PDF", "").trim();
     
-    // 2. BLOQUEO DE GUION MEDIO: Si el usuario metió un guion medio (-), se bloquea.
+    // 2. CANDADO 1: Si contiene un guion medio (-), se bloquea de inmediato.
     if (nombreLimpio.includes('-')) {
         return { 
             valido: false, 
-            motivo: "No se permiten guiones medios (-). Si es un archivo extra, usa guion bajo y número (Ej: _1)." 
+            motivo: "No se permiten guiones medios (-). Si es un archivo extra, usa guion bajo y número al final (Ej: _1)." 
         };
     }
     
-    // 3. BLOQUEO DE TEXTO DESPUÉS DEL ÚLTIMO GUION BAJO:
-    // Cortamos el nombre en pedazos usando los guiones bajos
-    const partes = nombreLimpio.split('_');
+    // 3. CANDADO 2: Detectar si termina en palabras prohibidas como _COPIA, _AUTOS, _RECIBO.
+    // Esta regla busca un guion bajo seguido de letras al final del nombre, 
+    // pero ignora si es parte de un apellido compuesto normal.
+    const tieneTextoInvalidoAlFinal = /_(COPIA|AUTOS|RECIBO|CORREGIDO|CHECK|OK|RESPALDO)$/.test(nombreLimpio);
     
-    // Si hay más de un guion bajo, revisamos qué hay en el último pedazo
-    if (partes.length > 2) {
-        const ultimaParte = partes[partes.length - 1].trim();
-        
-        // Si la última parte NO son números puros y NO está vacía, significa que metieron texto (como _COPIA o _AUTOS)
-        // Ojo: Si está vacía (como en LETICIA__ORTIZ), no pasa nada porque es un guion bajo doble interno.
-        if (ultimaParte !== "" && isNaN(ultimaParte)) {
-            return {
-                valido: false,
-                motivo: "Si agregas un guion bajo al final, debe ser seguido de números (Ej: _1, _2). No uses palabras como '_copia' o '_autos'."
-            };
-        }
+    if (tieneTextoInvalidoAlFinal) {
+        return {
+            valido: false,
+            motivo: "No uses palabras como '_copia' o '_autos' al final. Si es un archivo extra, usa guion bajo y número (Ej: _1)."
+        };
     }
     
-    // Si no tiene guiones medios ni texto prohibido al final, pasa directo
+    // Si no tiene guiones medios ni las palabras prohibidas de soporte, pasa libre
     return { valido: true };
 }
         
