@@ -164,12 +164,11 @@
             }
         }
 
-        // --- CANDADO INTELIGENTE DE VALIDACIÓN DE NOMBRES ---
 function validarNombreArchivo(nombre) {
-    // 1. Limpiamos la extensión y pasamos a mayúsculas
-    const nombreLimpio = nombre.toUpperCase().replace(".PDF", "").trim();
+    // 1. Quitamos la extensión (.pdf) y los espacios de las orillas para analizar el texto limpio
+    const nombreLimpio = nombre.replace(/\.[^/.]+$/, "").trim();
     
-    // 2. CANDADO 1: Si contiene un guion medio (-), se bloquea de inmediato.
+    // CANDADO 1: Si contiene un guion medio (-), se bloquea de inmediato.
     if (nombreLimpio.includes('-')) {
         return { 
             valido: false, 
@@ -177,11 +176,8 @@ function validarNombreArchivo(nombre) {
         };
     }
     
-    // 3. CANDADO 2: Detectar si termina en palabras prohibidas como _COPIA, _AUTOS, _RECIBO.
-    // Esta regla busca un guion bajo seguido de letras al final del nombre, 
-    // pero ignora si es parte de un apellido compuesto normal.
-    const tieneTextoInvalidoAlFinal = /_(COPIA|AUTOS|RECIBO|CORREGIDO|CHECK|OK|RESPALDO)$/.test(nombreLimpio);
-    
+    // CANDADO 2: Detectar palabras prohibidas al final con guion bajo (_copia, _autos)
+    const tieneTextoInvalidoAlFinal = /_(COPIA|AUTOS|RECIBO|CORREGIDO|CHECK|OK|RESPALDO)$/i.test(nombreLimpio);
     if (tieneTextoInvalidoAlFinal) {
         return {
             valido: false,
@@ -189,7 +185,18 @@ function validarNombreArchivo(nombre) {
         };
     }
     
-    // Si no tiene guiones medios ni las palabras prohibidas de soporte, pasa libre
+    // CANDADO 3: DETECTAR MINÚSCULAS PEBADAS AL APELLIDO (Ej: ALVAREZcopia)
+    // Buscamos si hay letras minúsculas en el nombre. Como tus nombres son 100% en mayúsculas,
+    // si el usuario escribe algo en minúsculas (excepto la extensión que ya quitamos), es un texto extra.
+    const tieneMinusculas = /[a-záéíóúñ]/.test(nombreLimpio);
+    if (tieneMinusculas) {
+        return {
+            valido: false,
+            motivo: "Detectamos letras minúsculas en el nombre. Todo el nombre del cliente debe ir en MAYÚSCULAS. Si es un archivo extra, usa _1, _2 al final."
+        };
+    }
+    
+    // Si pasa todos los filtros, está limpio
     return { valido: true };
 }
         
