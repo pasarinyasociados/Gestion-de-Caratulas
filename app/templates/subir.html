@@ -15,15 +15,14 @@
         body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; }
         .sidebar { width: 260px; background-color: var(--bg-card); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
         
-        /* Contenedor con fondo blanco al 50% de transparencia y esquinas redondeadas */
         .brand { 
             display: flex; 
             justify-content: center; 
             align-items: center; 
             width: 100%;
-            background-color: rgba(255, 255, 255, 0.8); /* Blanco con 80% de opacidad */
+            background-color: rgba(255, 255, 255, 0.8); 
             padding: 10px 14px;
-            border-radius: 8px; /* Esquinas redondeadas suaves */
+            border-radius: 8px; 
             margin-bottom: 0.5rem;
         }
         .sidebar-logo {
@@ -48,10 +47,12 @@
         .drop-zone { border: 2px dashed var(--border); border-radius: 0.5rem; padding: 2rem; text-align: center; cursor: pointer; transition: 0.2s; background-color: rgba(15, 23, 42, 0.3); }
         .drop-zone:hover, .drop-zone.dragover { border-color: var(--primary); background-color: rgba(56, 189, 248, 0.05); }
         .drop-zone i { font-size: 2.5rem; color: var(--text-muted); margin-bottom: 1rem; }
-        .file-info { margin-top: 0.75rem; font-size: 0.9rem; color: var(--primary); font-weight: 600; }
+        .file-info { margin-top: 0.75rem; font-size: 0.9rem; color: var(--primary); font-weight: 600; text-align: left; max-height: 150px; overflow-y: auto; padding: 5px; }
+        .file-item { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 4px; font-size: 0.85rem; color: var(--text-main); }
         
         .btn-submit { width: 100%; padding: 0.85rem; border-radius: 0.5rem; font-weight: 700; border: none; cursor: pointer; background-color: var(--primary); color: var(--bg-dark); font-size: 1rem; margin-top: 1rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
         .btn-submit:hover { background-color: var(--primary-hover); }
+        .btn-submit:disabled { background-color: var(--border); color: var(--text-muted); cursor: not-allowed; }
         
         .toast { position: fixed; bottom: 20px; right: 20px; padding: 1rem 1.5rem; border-radius: 0.5rem; color: white; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); transform: translateY(150%); transition: transform 0.3s ease; z-index: 1000; font-weight: 600; }
         .toast.success { background-color: var(--success); }
@@ -107,13 +108,13 @@
                     <label>Archivo PDF Físico</label>
                     <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-input').click()">
                         <i class="fa-solid fa-file-pdf"></i>
-                        <p id="drop-text">Arrastra el archivo aquí o haz clic para buscar</p>
-                        <input type="file" id="file-input" name="file" accept="application/pdf" style="display: none;" onchange="mostrarNombreArchivo()">
+                        <p id="drop-text">Arrastra los archivos aquí o haz clic para buscar</p>
+                        <input type="file" id="file-input" name="file" accept="application/pdf" multiple style="display: none;" onchange="mostrarNombreArchivo()">
                         <div id="file-info" class="file-info"></div>
                     </div>
                 </div>
 
-                <button type="submit" class="btn-submit"><i class="fa-solid fa-cloud-arrow-up"></i> Subir al Servidor</button>
+                <button type="submit" id="btn-enviar" class="btn-submit"><i class="fa-solid fa-cloud-arrow-up"></i> Subir al Servidor</button>
             </form>
         </div>
     </div>
@@ -121,7 +122,9 @@
     <div id="toast" class="toast"><i id="toast-icon" class="fa-solid"></i> <span id="toast-msg"></span></div>
 
     <script>
-        // Función para alternar visualmente entre Póliza y Recibo
+        // Guardamos los archivos en una variable global para el drag and drop masivo
+        let archivosSeleccionados = [];
+
         function seleccionarTipo(tipo) {
             const btnPoliza = document.getElementById('btn-poliza');
             const btnRecibo = document.getElementById('id-btn-recibo');
@@ -148,7 +151,6 @@
             }
         }
 
-        // Inicializa el selector con los 3 años vigentes automáticamente
         function inicializarAnios() {
             const selectAnio = document.getElementById('anio');
             const anioActual = new Date().getFullYear();
@@ -166,9 +168,21 @@
             const input = document.getElementById('file-input');
             const info = document.getElementById('file-info');
             const text = document.getElementById('drop-text');
+            
             if(input.files.length > 0) {
+                archivosSeleccionados = Array.from(input.files);
+            }
+
+            if(archivosSeleccionados.length > 0) {
                 text.style.display = "none";
-                info.innerText = `Seleccionado: ${input.files[0].name}`;
+                info.innerHTML = ""; // Limpiar vista anterior
+                
+                archivosSeleccionados.forEach(file => {
+                    const item = document.createElement('div');
+                    item.className = 'file-item';
+                    item.innerHTML = `<i class="fa-solid fa-file-pdf" style="color: red;"></i> <span>${file.name}</span>`;
+                    info.appendChild(item);
+                });
             }
         }
 
@@ -186,33 +200,75 @@
 
         async function enviarPoliza(e) {
             e.preventDefault();
-            const input = document.getElementById('file-input');
-            if(input.files.length === 0) {
-                lanzarToast("Por favor, selecciona un archivo PDF primero.", "danger");
+            const btnEnviar = document.getElementById('btn-enviar');
+            
+            if(archivosSeleccionados.length === 0) {
+                lanzarToast("Por favor, selecciona al menos un archivo PDF.", "danger");
                 return;
             }
 
-            const formData = new FormData(document.getElementById('upload-form'));
-            try {
-                const res = await fetch('/subir_poliza', { method: 'POST', body: formData });
-                const data = await res.json();
-                
-                if (data.message === "Exito") {
-                    lanzarToast("Documento cargado e integrado correctamente.", "success");
-                    document.getElementById('upload-form').reset();
-                    document.getElementById('drop-text').style.display = "block";
-                    document.getElementById('file-info').innerText = "";
-                    // Reiniciar el selector visual a póliza por defecto
-                    seleccionarTipo('poliza');
-                } else {
-                    lanzarToast(`Error: ${data.error}`, "danger");
+            btnEnviar.disabled = true;
+            btnEnviar.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Subiendo archivos...`;
+
+            const anio = document.getElementById('anio').value;
+            const tipo = document.getElementById('tipo_documento').value;
+            
+            let exitos = 0;
+            let errores = 0;
+            let mensajesErrores = [];
+
+            // Enviamos cada archivo uno por uno en ráfaga controlada
+            for (const file of archivosSeleccionados) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('anio', anio);
+                formData.append('tipo', tipo);
+
+                try {
+                    const res = await fetch('/subir_poliza', { method: 'POST', body: formData });
+                    const data = await res.json();
+                    
+                    if (data.message === "Exito") {
+                        exitos++;
+                    } else if (data.error === "duplicado") {
+                        errores++;
+                        mensajesErrores.push(data.message); // El mensaje personalizado de duplicado del backend
+                    } else {
+                        errores++;
+                        mensajesErrores.push(`${file.name}: ${data.error}`);
+                    }
+                } catch (err) {
+                    errores++;
+                    mensajesErrores.push(`${file.name}: Error de conexión.`);
                 }
-            } catch (err) {
-                lanzarToast("Error de conexión con el servidor.", "danger");
             }
+
+            // Reporte final en pantalla de cómo les fue a las subidas
+            if (exitos > 0 && errores === 0) {
+                lanzarToast(`¡Éxito! Se cargaron los ${exitos} documentos correctamente.`, "success");
+            } else if (exitos > 0 && errores > 0) {
+                lanzarToast(`Se subieron ${exitos} archivos, pero ${errores} fallaron o estaban duplicados.`, "danger");
+                if(mensajesErrores.length > 0) {
+                    setTimeout(() => alert("Detalle de las pólizas no subidas:\n\n" + mensajesErrores.join("\n")), 800);
+                }
+            } else {
+                lanzarToast(`No se pudo subir ningún archivo. Revisa los duplicados o errores.`, "danger");
+                if(mensajesErrores.length > 0) {
+                    setTimeout(() => alert("Errores detectados:\n\n" + mensajesErrores.join("\n")), 800);
+                }
+            }
+
+            // Reiniciar el formulario por completo al terminar
+            btnEnviar.disabled = false;
+            btnEnviar.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Subir al Servidor`;
+            document.getElementById('upload-form').reset();
+            document.getElementById('drop-text').style.display = "block";
+            document.getElementById('file-info').innerHTML = "";
+            archivosSeleccionados = [];
+            seleccionarTipo('poliza');
         }
 
-        // Configuración de Drag & Drop visual
+        // Configuración de Drag & Drop visual y lógico masivo
         const dropZone = document.getElementById('drop-zone');
         ['dragenter', 'dragover'].forEach(eventName => {
             dropZone.addEventListener(eventName, (e) => { e.preventDefault(); dropZone.classList.add('dragover'); }, false);
@@ -223,11 +279,17 @@
         dropZone.addEventListener('drop', (e) => {
             const dt = e.dataTransfer;
             const files = dt.files;
-            document.getElementById('file-input').files = files;
-            mostrarNombreArchivo();
+            
+            if(files.length > 0) {
+                // Filtramos para asegurar que solo entren archivos PDF
+                archivosSeleccionados = Array.from(files).filter(f => f.type === "application/pdf" || f.name.toLowerCase().endsWith('.pdf'));
+                if(archivosSeleccionados.length === 0) {
+                    lanzarToast("Solo se permiten archivos en formato PDF.", "danger");
+                }
+                mostrarNombreArchivo();
+            }
         });
 
-        // Correr al cargar la página
         window.onload = inicializarAnios;
     </script>
 </body>
