@@ -6,7 +6,6 @@ from fastapi import APIRouter, Form, Request, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from app.database import supabase
 from postgrest.exceptions import APIError
-from storage3.util import FileOptions
 import unicodedata
 from urllib.parse import unquote, urlparse
 
@@ -76,17 +75,17 @@ async def subir_poliza(
         # Generamos la ruta física del archivo
         file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
 
-        # 3. Subir archivo físico al Storage (Pisa el archivo fantasma si ya existía)
+        # 3. Subir archivo físico al Storage usando un diccionario estándar de Python
         file_content = await file.read()
         supabase.storage.from_("polizas").upload(
             path=file_path, 
             file=file_content, 
-            file_options=FileOptions(content_type="application/pdf", upsert=True)
+            file_options={"content-type": "application/pdf", "upsert": "true"}
         )
         url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
 
-        # --- VALIDACIÓN Y REEMPLAZO EN LA BASE DE DATOS ---
-        # Buscamos si ya existe el registro para actualizarlo o meter uno nuevo
+        # --- VALIDACIÓN Y CONTROL EN BASE DE DATOS ---
+        # Buscamos si ya existe el registro en la BD
         existe_poliza = supabase.table("polizas")\
             .select("id")\
             .eq("cliente_nombre", nombre_cliente)\
@@ -107,11 +106,11 @@ async def subir_poliza(
         }
 
         if existe_poliza.data:
-            # Si el registro ya existía en la BD, lo actualizamos para evitar duplicados
+            # Si ya existía, actualizamos el registro
             id_existente = existe_poliza.data[0]['id']
             supabase.table("polizas").update(data).eq("id", id_existente).execute()
         else:
-            # Si es completamente nuevo, se inserta normal
+            # Si no existía, insertamos uno nuevo
             supabase.table("polizas").insert(data).execute()
             
         return {"message": "Exito"}
@@ -173,7 +172,7 @@ def detectar_obsoleto(request: Request):
     
     if resultado.data:
         anios_obsoletos = sorted(list(set([p['anio'] for p in resultado.data])))
-        return {"anios": anios_obsoletos}
+        return {"anios": [anios_obsoletos]}
     
     return {"anios": []}
 
