@@ -6,6 +6,7 @@ from fastapi import APIRouter, Form, Request, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from app.database import supabase
 from postgrest.exceptions import APIError
+from storage3.util import FileOptions
 import unicodedata
 from urllib.parse import unquote, urlparse
 
@@ -88,7 +89,7 @@ async def subir_poliza(
         # 3. Subir archivo físico al Storage
         file_content = await file.read()
         file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
-        supabase.storage.from_("polizas").upload(path=file_path, file=file_content, file_options={"content_type": "application/pdf", "x-upsert": "true"})
+        supabase.storage.from_("polizas").upload(path=file_path, file=file_content, file_options={"content_type": "application/pdf", upsert=True})
         url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
 
         # 4. Insertar en la Base de Datos incluyendo la columna de control 'path_storage'
