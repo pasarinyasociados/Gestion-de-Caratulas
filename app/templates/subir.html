@@ -166,23 +166,28 @@
 
         // --- CANDADO INTELIGENTE DE VALIDACIÓN DE NOMBRES ---
 function validarNombreArchivo(nombre) {
-    const nombreLimpio = nombre.replace(/\.[^/.]+$/, ""); // Quitar extensión (.pdf)
+    const nombreLimpio = nombre.replace(/\.[^/.]+$/, ""); // Quitar el .pdf
     
-    // EXPRESIÓN REGULAR EXACTA:
-    // ^\d+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+\s+ -> Empieza con "DD MES_"
-    // [A-ZÁÉÍÓÚÑa-záéíóúñ\s.]+         -> El nombre/apellidos (solo letras, espacios y puntos como en Ma.)
-    // (_\d+)?$                         -> OPCIONAL: Un guion bajo y números al final. ¡Y se acaba el texto!
-    const formatoValido = /^\d+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ\s.]+(_\d+)?$/;
-    
-    if (formatoValido.test(nombreLimpio)) {
-        return { valido: true };
+    // 1. BLOQUEO DE GUION MEDIO: Si contiene un guion medio (-) en cualquier parte, rebótalo
+    if (nombreLimpio.includes('-')) {
+        return { 
+            valido: false, 
+            motivo: "No se permiten guiones medios (-). Si es un archivo extra, usa guion bajo y número al final (Ej: _1)." 
+        };
     }
     
-    // Si no pasó la prueba, revisamos si es porque metieron guiones medios o texto raro al final
-    return { 
-        valido: false, 
-        motivo: "Formato no permitido. Después del apellido solo se admite un guion bajo y luego el numero de poliza (Ej: _12345)" 
-    };
+    // 2. BLOQUEO DE TEXTO EXTRA AL FINAL: Buscamos si al final del archivo, después del último guion bajo,
+    // el usuario metió letras en lugar de números (como _copia, _autos, _recibo)
+    // Explicación: Si hay un '_' seguido de letras al mero final del string, lo cachamos.
+    if (/_[A-Za-zÁÉÍÓÚÑa-záéíóúñ]+$/.test(nombreLimpio)) {
+        return {
+            valido: false,
+            motivo: "Si agregas un guion bajo al final, debe ser únicamente seguido de números (Ej: _1, _2). No uses texto como '_copia' o '_autos'."
+        };
+    }
+    
+    // Si no tiene guiones medios ni texto inventado al final, ¡QUE PASE! (No importa si lleva dobles guiones bajos adentro)
+    return { valido: true };
 }
         
         function mostrarNombreArchivo() {
