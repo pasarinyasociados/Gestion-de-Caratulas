@@ -65,28 +65,27 @@ async def subir_poliza(
         nombre_cliente = nombre_original.split("_", 1)[1] if "_" in nombre_original else nombre_original[6:]
         nombre_cliente = nombre_cliente.replace(".pdf", "").replace(".PDF", "").strip()
         
-        # --- FILTRO INTELIGENTE: LIMPIEZA DE COLA ---
-        nombre_cliente = re.sub(r'_\d+.*$', '', nombre_cliente)
-        nombre_cliente = nombre_cliente.replace("_", " ").strip()
+        # --- FILTRO INTELIGENTE: LIMPIEZA DE COLA (SOLO PARA BÚSQUEDAS EN DB) ---
+        nombre_cliente_limpio = re.sub(r'_\d+.*$', '', nombre_cliente)
+        nombre_cliente_limpio = nombre_cliente_limpio.replace("_", " ").strip()
         
-        # --- VALIDACIÓN ANTIDUPLICADOS (ANTES DE SUBIR) ---
-        existe_poliza = supabase.table("polizas")\
-            .select("id")\
-            .eq("cliente_nombre", nombre_cliente)\
-            .eq("dia", dia_extraido)\
-            .eq("mes", mes_extraido[:3])\
-            .eq("anio", anio)\
-            .eq("tipo", tipo)\
-            .execute()
-            
-        if existe_poliza.data:
-            return {"error": "duplicado", "message": f"La póliza de {nombre_cliente} para el día {dia_extraido} de {mes_extraido[:3]} ya existe."}
-
-        # --- SI ES NUEVA, PROCEDEMOS CON LA SUBIDA FÍSICA ---
+        # Para mantener el nombre original del archivo sin la extensión .pdf en la descarga si se requiere
+        nombre_archivo_base = nombre_original.replace(".pdf", "").replace(".PDF", "").strip()
+        
+        # Normalizar el nombre físico para el almacenamiento en Storage
         nombre_limpio_storage = unicodedata.normalize('NFKD', nombre_original).encode('ascii', 'ignore').decode('ascii')
         file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
 
-        # Subir usando diccionario nativo con "true" como texto para evitar errores de tipo
+        # --- VALIDACIÓN ANTIDUPLICADOS REAL (POR PATH EXACTO DEL ARCHIVO) ---
+        existe_poliza = supabase.table("polizas")\
+            .select("id")\
+            .eq("path_storage", file_path)\
+            .execute()
+            
+        if existe_poliza.data:
+            return {"error": "duplicado", "message": f"El archivo '{nombre_original}' ya existe en el sistema para este año."}
+
+        # --- SI ES NUEVA, PROCEDEMOS CON LA SUBIDA FÍSICA ---
         file_content = await file.read()
         supabase.storage.from_("polizas").upload(
             path=file_path, 
@@ -96,12 +95,12 @@ async def subir_poliza(
         url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
             
         data = {
-            "cliente_nombre": nombre_cliente, 
+            "cliente_nombre": nombre_cliente_limpio, # Nombre limpio para que lo busques fácilmente
             "dia": dia_extraido, 
             "mes": mes_extraido[:3], 
             "anio": anio, 
             "url_archivo": url_archivo,
-            "path_storage": file_path,
+            "path_storage": file_path, # Guarda el nombre único original con sus números
             "tipo": tipo
         }
 
@@ -192,8 +191,11 @@ async def descargar_anio(request: Request, anio: str):
                     path_interno = url_path.split("/object/public/polizas/")[1]
                     path_interno = unquote(path_interno)
                 
+                # Obtener el nombre original real desde el path guardado en lugar de reconstruirlo mochado
+                nombre_archivo_original = path_interno.split("/")[-1]
+                
                 archivo_binario = supabase.storage.from_("polizas").download(path_interno)
-                zip_file.writestr(f"{p['anio']}/{p['mes']}/{p['cliente_nombre']}_{p['dia']}.pdf", archivo_binario)
+                zip_file.writestr(f"{p['anio']}/{p['mes']}/{nombre_archivo_original}", archivo_binario)
             except:
                 continue
                 
