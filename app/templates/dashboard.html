@@ -2,38 +2,113 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Buscador de Pólizas</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-900 text-white font-sans">
-    <nav class="bg-gray-800 p-4 border-b border-gray-700">
-        <div class="container mx-auto flex justify-between">
-            <h1 class="text-xl font-bold text-blue-400">Buscador de Pólizas</h1>
-            <div class="flex gap-4">
-                <a href="/subir_pantalla" class="text-gray-400 hover:text-white">Subir Pólizas</a>
-                <a href="/" class="text-red-400 hover:text-white">Cerrar Sesión</a>
-            </div>
-        </div>
-    </nav>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultar Documentos - Gestión de Carátulas</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc;
+            --text-muted: #94a3b8; --primary: #38bdf8; --primary-hover: #0ea5e9;
+            --danger: #ef4444; --whatsapp: #25d366; --border: #334155;
+            --section-title: #f1f5f9;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; }
+        
+        /* Sidebar Unificado */
+        .sidebar { width: 260px; background-color: var(--bg-card); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
+        
+        .brand { 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+        .sidebar-logo {
+            width: 100%;
+            max-width: 210px;
+            height: auto;
+            object-fit: contain;
+        }
 
-    <div class="container mx-auto mt-10 p-4">
-        <!-- BUSCADOR -->
-        <div class="bg-gray-800 p-6 rounded-lg shadow-lg border border-gray-700">
-            <h2 class="text-lg mb-4 text-blue-400 font-bold">Consultar Cliente</h2>
-            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <input type="text" id="nombre" placeholder="Nombre o Apellido..." class="p-2 rounded bg-gray-700 border border-gray-600 text-white outline-none focus:border-blue-500">
-                <input type="number" id="dia" placeholder="Día" class="p-2 rounded bg-gray-700 border border-gray-600 text-white outline-none">
-                <input type="text" id="mes" placeholder="Mes (3 letras)" class="p-2 rounded bg-gray-700 border border-gray-600 text-white outline-none">
-                <input type="number" id="anio" placeholder="Año" class="p-2 rounded bg-gray-700 border border-gray-600 text-white outline-none">
-                
-                <button onclick="ejecutarBusqueda()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold transition shadow-md">
-                    Buscar Ahora
+        .menu { display: flex; flex-direction: column; gap: 0.5rem; list-style: none; }
+        .menu-item a { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; color: var(--text-muted); text-decoration: none; border-radius: 0.5rem; transition: 0.2s; font-weight: 500; }
+        .menu-item.active a, .menu-item a:hover { background-color: rgba(56, 189, 248, 0.1); color: var(--primary); }
+        
+        /* Contenido Principal */
+        .main-content { flex: 1; padding: 2rem 3rem; overflow-y: auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem; }
+        
+        .search-section { background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; padding: 2rem; margin-bottom: 2rem; }
+        .grid-filters { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end; }
+        
+        .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+        .form-group label { font-size: 0.875rem; color: var(--text-muted); }
+        .form-control { background-color: var(--bg-dark); border: 1px solid var(--border); color: var(--text-main); padding: 0.75rem 1rem; border-radius: 0.5rem; outline: none; width: 100%; }
+        
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem; height: 46px; transition: 0.2s; }
+        .btn-primary { background-color: var(--primary); color: var(--bg-dark); }
+        .btn-primary:hover { background-color: var(--primary-hover); }
+        
+        /* Contenedor de Resultados */
+        .results-container { display: flex; flex-direction: column; gap: 1rem; }
+        .tarjeta-resultado { border-left: 4px solid var(--primary); padding: 1rem 1.5rem; background-color: var(--bg-card); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; transition: 0.2s; }
+        .tarjeta-resultado:hover { background-color: rgba(255, 255, 255, 0.02); }
+        
+        .actions-cell { display: flex; gap: 0.75rem; }
+        .btn-action { padding: 0.5rem 1rem; border-radius: 0.375rem; font-size: 0.875rem; font-weight: 500; display: inline-flex; align-items: center; gap: 0.375rem; cursor: pointer; border: none; transition: 0.2s; }
+        .btn-view { background-color: rgba(56, 189, 248, 0.1); color: var(--primary); }
+        .btn-whatsapp { background-color: rgba(37, 211, 102, 0.1); color: var(--whatsapp); }
+        .no-data { padding: 3rem; text-align: center; color: var(--text-muted); width: 100%; background-color: var(--bg-card); border: 1px solid var(--border); border-radius: 1rem; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand">
+            <img src="/static/logo_sidebar.png" alt="Logo Pasarin & Asociados" class="sidebar-logo">
+        </div>
+        <ul class="menu">
+            <li class="menu-item active"><a href="/panel"><i class="fa-solid fa-magnifying-glass"></i> Consultar</a></li>
+            <li class="menu-item"><a href="/subir_pantalla"><i class="fa-solid fa-cloud-arrow-up"></i> Cargar Documentos</a></li>
+            <li class="menu-item logout" style="margin-top: auto;"><a href="/"><i class="fa-solid fa-right-from-bracket"></i> Salir</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <header>
+            <h1>Consultar Cliente</h1>
+        </header>
+
+        <section class="search-section">
+            <div class="grid-filters">
+                <div class="form-group">
+                    <label>Nombre o Apellido</label>
+                    <input type="text" id="nombre" class="form-control" placeholder="Nombre o Apellido...">
+                </div>
+                <div class="form-group">
+                    <label>Día</label>
+                    <input type="number" id="dia" class="form-control" placeholder="Día">
+                </div>
+                <div class="form-group">
+                    <label>Mes</label>
+                    <input type="text" id="mes" class="form-control" placeholder="Mes (3 letras)">
+                </div>
+                <div class="form-group">
+                    <label>Año</label>
+                    <input type="number" id="anio" class="form-control" placeholder="Año">
+                </div>
+                <button class="btn btn-primary" onclick="ejecutarBusqueda()">
+                    <i class="fa-solid fa-magnifying-glass"></i> Buscar Ahora
                 </button>
             </div>
-        </div>
+        </section>
 
-        <div id="resultado" class="mt-8 hidden p-6 bg-gray-800 rounded-lg border border-gray-700 shadow-inner">
-            <!-- Resultados dinámicos -->
+        <div id="resultado" class="results-container">
+            <div class="no-data">Inicia una búsqueda...</div>
         </div>
     </div>
 
@@ -51,37 +126,39 @@
             if (mes) params.append('mes', mes);
             if (anio) params.append('anio', anio);
 
-            const respuesta = await fetch(`/buscar_poliza?${params.toString()}`);
-            const datos = await respuesta.json();
+            try {
+                const respuesta = await fetch(`/buscar_poliza?${params.toString()}`);
+                const datos = await respuesta.json();
 
-            resDiv.classList.remove('hidden');
-            resDiv.innerHTML = ""; 
+                resDiv.innerHTML = ""; 
 
-            if (Array.isArray(datos) && datos.length > 0) {
-                datos.forEach(p => {
-                    const tarjeta = document.createElement('div');
-                    tarjeta.className = "border-l-4 border-blue-500 pl-4 mb-6 bg-gray-700 p-4 rounded shadow-sm hover:bg-gray-600 transition";
-                    tarjeta.innerHTML = `
-                        <div class="flex justify-between items-center">
+                if (Array.isArray(datos) && datos.length > 0) {
+                    datos.forEach(p => {
+                        const tarjeta = document.createElement('div');
+                        tarjeta.className = "tarjeta-resultado";
+                        tarjeta.innerHTML = `
                             <div>
-                                <h3 class="text-xl font-bold text-white">${p.cliente_nombre}</h3>
-                                <p class="text-gray-400">📅 Fecha: ${p.dia} / ${p.mes} / ${p.anio}</p>
+                                <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.25rem;">${p.cliente_nombre}</h3>
+                                <p style="color: var(--text-muted); font-size: 0.9rem;"><i class="fa-solid fa-calendar-days"></i> Fecha: ${p.dia} / ${p.mes} / ${p.anio}</p>
                             </div>
-                            <div class="flex gap-2">
-                                <button onclick="abrirVisor('${p.url_archivo}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-bold text-sm transition">
-                                    👁️ Ver
+                            <div class="actions-cell">
+                                <button onclick="abrirVisor('${p.url_archivo}')" class="btn-action btn-view">
+                                    <i class="fa-solid fa-file-pdf"></i> Ver PDF
                                 </button>
-                                <button onclick="enviarArchivoWhatsApp('${p.url_archivo}', '${p.cliente_nombre}')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-bold text-sm transition">
-                                    📱 WhatsApp
+                                <button onclick="enviarArchivoWhatsApp('${p.url_archivo}', '${p.cliente_nombre}')" class="btn-action btn-whatsapp">
+                                    <i class="fa-brands fa-whatsapp"></i> WhatsApp
                                 </button>
                             </div>
-                        </div>
-                    `;
-                    resDiv.appendChild(tarjeta);
-                });
-            } else {
-                const mensaje = datos.error ? datos.error : "No se encontraron coincidencias.";
-                resDiv.innerHTML = `<p class="text-red-400 font-bold text-center">⚠️ ${mensaje}</p>`;
+                        `;
+                        resDiv.appendChild(tarjeta);
+                    });
+                } else {
+                    const mensaje = datos.error ? datos.error : "No se encontraron coincidencias.";
+                    resDiv.innerHTML = `<div class="no-data" style="color: var(--danger);">⚠️ ${mensaje}</div>`;
+                }
+            } catch (err) {
+                console.error(err);
+                resDiv.innerHTML = `<div class="no-data" style="color: var(--danger);">Ocurrió un error al conectar con el servidor.</div>`;
             }
         }
 
@@ -107,10 +184,10 @@
         }
 
         function abrirVisor(url) {
-            const ancho = 800, alto = 900;
+            const ancho = 900, alto = 800;
             const x = (screen.width / 2) - (ancho / 2);
             const y = (screen.height / 2) - (alto / 2);
-            window.open(url, 'Visor', `width=${ancho},height=${alto},left=${x},top=${y}`);
+            window.open(url, 'Visualizador', `width=${ancho},height=${alto},left=${x},top=${y},toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes`);
         }
     </script>
 </body>
