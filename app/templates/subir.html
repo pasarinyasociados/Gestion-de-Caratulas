@@ -165,22 +165,30 @@
         }
 
         // --- CANDADO INTELIGENTE DE VALIDACIÓN DE NOMBRES ---
-        function validarNombreArchivo(nombre) {
-            const nombreLimpio = nombre.replace(/\.[^/.]+$/, ""); // Quitar extensión
-            
-            // Si el nombre tiene algún número al final del cliente, DEBE llevar el guion bajo
-            // Detecta si hay números al final que no estén precedidos inmediatamente por un guion bajo
-            const tieneNumeroAlFinalSinGuion = /(?<!_)\d+$/.test(nombreLimpio);
-            
-            if (tieneNumeroAlFinalSinGuion) {
-                return {
-                    valido: false,
-                    motivo: "Si deseas agregar números al final, debes poner un guion bajo antes (Ej: _1, _2)."
-                };
-            }
-            return { valido: true };
-        }
-
+function validarNombreArchivo(nombre) {
+    const nombreLimpio = nombre.replace(/\.[^/.]+$/, ""); // Quitar extensión (.pdf)
+    
+    // EXPRESIÓN REGULAR ESTRICTA:
+    // 1. Debe empezar con números y espacios (Ej: 12 ENE_)
+    // 2. El nombre del cliente solo puede tener letras, espacios y puntos (Ma. Teresa)
+    // 3. Opcionalmente puede llevar un guion bajo y números al final (_1, _2)
+    // NO se permiten guiones medios (-), ni letras locas al final.
+    const formatoValido = /^\d+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ.]+\s+_[0-9]+$/;
+    const formatoNormal = /^\d+\s+[A-ZÁÉÍÓÚÑa-záéíóúñ.\s]+$/;
+    
+    // Si cumple cualquiera de los dos formatos permitidos, es válido
+    if (formatoNormal.test(nombreLimpio) || formatoValido.test(nombreLimpio)) {
+        return { valido: true };
+    }
+    
+    // Si no cumple, identificamos si es por culpa de un guion medio o texto extra
+    if (nombreLimpio.includes('-')) {
+        return { valido: false, motivo: "No se permiten guiones medios (-). Si es un archivo extra, usa guion bajo y número (Ej: _1)." };
+    }
+    
+    return { valido: false, motivo: "Formato incorrecto. Recuerda el orden: DD MES_NOMBRE CLIENTE o NOMBRE CLIENTE_1" };
+}
+        
         function mostrarNombreArchivo() {
             const input = document.getElementById('file-input');
             const info = document.getElementById('file-info');
