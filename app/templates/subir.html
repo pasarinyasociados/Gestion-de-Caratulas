@@ -166,27 +166,36 @@
 
         // --- CANDADO INTELIGENTE DE VALIDACIÓN DE NOMBRES ---
 function validarNombreArchivo(nombre) {
-    const nombreLimpio = nombre.replace(/\.[^/.]+$/, ""); // Quitar el .pdf
+    // 1. Pasamos el nombre a mayúsculas y le quitamos el ".pdf" para analizarlo limpio
+    const nombreLimpio = nombre.toUpperCase().replace(".PDF", "").trim();
     
-    // 1. BLOQUEO DE GUION MEDIO: Si contiene un guion medio (-) en cualquier parte, rebótalo
+    // 2. BLOQUEO DE GUION MEDIO: Si el usuario metió un guion medio (-), se bloquea.
     if (nombreLimpio.includes('-')) {
         return { 
             valido: false, 
-            motivo: "No se permiten guiones medios (-). Si es un archivo extra, usa guion bajo y número al final (Ej: _1)." 
+            motivo: "No se permiten guiones medios (-). Si es un archivo extra, usa guion bajo y número (Ej: _1)." 
         };
     }
     
-    // 2. BLOQUEO DE TEXTO EXTRA AL FINAL: Buscamos si al final del archivo, después del último guion bajo,
-    // el usuario metió letras en lugar de números (como _copia, _autos, _recibo)
-    // Explicación: Si hay un '_' seguido de letras al mero final del string, lo cachamos.
-    if (/_[A-Za-zÁÉÍÓÚÑa-záéíóúñ]+$/.test(nombreLimpio)) {
-        return {
-            valido: false,
-            motivo: "Si agregas un guion bajo al final, debe ser únicamente seguido de números (Ej: _1, _2). No uses texto como '_copia' o '_autos'."
-        };
+    // 3. BLOQUEO DE TEXTO DESPUÉS DEL ÚLTIMO GUION BAJO:
+    // Cortamos el nombre en pedazos usando los guiones bajos
+    const partes = nombreLimpio.split('_');
+    
+    // Si hay más de un guion bajo, revisamos qué hay en el último pedazo
+    if (partes.length > 2) {
+        const ultimaParte = partes[partes.length - 1].trim();
+        
+        // Si la última parte NO son números puros y NO está vacía, significa que metieron texto (como _COPIA o _AUTOS)
+        // Ojo: Si está vacía (como en LETICIA__ORTIZ), no pasa nada porque es un guion bajo doble interno.
+        if (ultimaParte !== "" && isNaN(ultimaParte)) {
+            return {
+                valido: false,
+                motivo: "Si agregas un guion bajo al final, debe ser seguido de números (Ej: _1, _2). No uses palabras como '_copia' o '_autos'."
+            };
+        }
     }
     
-    // Si no tiene guiones medios ni texto inventado al final, ¡QUE PASE! (No importa si lleva dobles guiones bajos adentro)
+    // Si no tiene guiones medios ni texto prohibido al final, pasa directo
     return { valido: true };
 }
         
