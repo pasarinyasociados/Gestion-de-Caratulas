@@ -1,4 +1,5 @@
 import io
+import os
 import re
 import zipfile
 from datetime import datetime
@@ -182,6 +183,8 @@ async def descargar_anio(request: Request, anio: str):
         raise HTTPException(status_code=404, detail="No hay pólizas para descargar")
         
     buffer = io.BytesIO()
+    nombres_usados = set() # Para evitar el error de duplicados
+    
     with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for p in polizas.data:
             try:
@@ -191,17 +194,31 @@ async def descargar_anio(request: Request, anio: str):
                     path_interno = url_path.split("/object/public/polizas/")[1]
                     path_interno = unquote(path_interno)
                 
-                # Obtener el nombre original real desde el path guardado en lugar de reconstruirlo mochado
-                nombre_archivo_original = path_interno.split("/")[-1]
+                nombre_archivo = path_interno.split("/")[-1]
+                
+                # Creamos una ruta interna única evitando colisiones
+                ruta_interna = f"{p['anio']}/{p['mes']}/{nombre_archivo}"
+                
+                # Si el nombre ya se usó, le agregamos un sufijo para no romper el ZIP
+                if ruta_interna in nombres_usados:
+                    nombre_base, ext = os.path.splitext(nombre_archivo)
+                    ruta_interna = f"{p['anio']}/{p['mes']}/{nombre_base}_{p['id']}{ext}"
+                
+                nombres_usados.add(ruta_interna)
                 
                 archivo_binario = supabase.storage.from_("polizas").download(path_interno)
-                zip_file.writestr(f"{p['anio']}/{p['mes']}/{nombre_archivo_original}", archivo_binario)
-            except:
+                zip_file.writestr(ruta_interna, archivo_binario)
+            except Exception as e:
+                print(f"Error saltando archivo: {e}")
                 continue
                 
     buffer.seek(0)
-    nombre_zip = f"polizas_{anio}.zip" if anio != "todos" else "respaldo_total_polizas.zip"
-    return StreamingResponse(buffer, media_type="application/zip", headers={"Content-Disposition": f"attachment; filename={nombre_zip}"})
+    nombre_zip = f"polizas_{anio}.zip" if anio != "todos" else "respaldo_total.zip"
+    return StreamingResponse(
+        io.BytesIO(buffer.getvalue()), 
+        media_type="application/zip", 
+        headers={"Content-Disposition": f"attachment; filename={nombre_zip}"}
+    )
 
 @router.delete("/purgar_ano/{anio}")
 def purgar_anio(request: Request, anio: int):
