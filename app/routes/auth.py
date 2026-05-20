@@ -8,6 +8,7 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from app.database import supabase
 from postgrest.exceptions import APIError
 from concurrent.futures import ThreadPoolExecutor
+from fastapi import Request, HTTPException, BackgroundTasks
 import unicodedata
 from urllib.parse import unquote, urlparse
 
@@ -171,7 +172,7 @@ def detectar_obsoleto(request: Request):
     return {"anios": []}
 
 @router.get("/descargar_ano/{anio}")
-def descargar_anio(request: Request, anio: str, background_tasks: fastapi.BackgroundTasks = fastapi.BackgroundTasks()):
+def descargar_anio(request: Request, anio: str, background_tasks: BackgroundTasks = BackgroundTasks()):
     if not request.session.get("usuario_id") or request.session.get("usuario_rol") != "admin":
         raise HTTPException(status_code=404, detail="No autorizado")
     
