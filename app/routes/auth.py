@@ -7,6 +7,7 @@ from fastapi import APIRouter, Form, Request, File, UploadFile, HTTPException
 from fastapi.responses import RedirectResponse, StreamingResponse
 from app.database import supabase
 from postgrest.exceptions import APIError
+from concurrent.futures import ThreadPoolExecutor
 import unicodedata
 from urllib.parse import unquote, urlparse
 
@@ -170,7 +171,7 @@ def detectar_obsoleto(request: Request):
     return {"anios": []}
 
 @router.get("/descargar_ano/{anio}")
-def descargar_anio(request: Request, anio: str):
+def descargar_anio(request: Request, anio: str, background_tasks: BackgroundTasks):
     if not request.session.get("usuario_id") or request.session.get("usuario_rol") != "admin":
         raise HTTPException(status_code=404, detail="No autorizado")
     
@@ -182,44 +183,54 @@ def descargar_anio(request: Request, anio: str):
     if not polizas.data:
         raise HTTPException(status_code=404, detail="No hay pólizas para descargar")
         
-    buffer = io.BytesIO()
-    nombres_usados = set() # Para evitar el error de duplicados
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
     
-    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for p in polizas.data:
-            try:
-                path_interno = p.get('path_storage')
-                if not path_interno:
-                    url_path = urlparse(p['url_archivo']).path
-                    path_interno = url_path.split("/object/public/polizas/")[1]
-                    path_interno = unquote(path_interno)
-                
-                nombre_archivo = path_interno.split("/")[-1]
-                
-                # Creamos una ruta interna única evitando colisiones
-                ruta_interna = f"{p['anio']}/{p['mes']}/{nombre_archivo}"
-                
-                # Si el nombre ya se usó, le agregamos un sufijo para no romper el ZIP
-                if ruta_interna in nombres_usados:
-                    nombre_base, ext = os.path.splitext(nombre_archivo)
-                    ruta_interna = f"{p['anio']}/{p['mes']}/{nombre_base}_{p['id']}{ext}"
-                
-                nombres_usados.add(ruta_interna)
-                
-                archivo_binario = supabase.storage.from_("polizas").download(path_interno)
-                zip_file.writestr(ruta_interna, archivo_binario)
-            except Exception as e:
-                print(f"Error saltando archivo: {e}")
-                continue
-                
-    buffer.seek(0)
-    nombre_zip = f"polizas_{anio}.zip" if anio != "todos" else "respaldo_total.zip"
-    return StreamingResponse(
-        io.BytesIO(buffer.getvalue()), 
-        media_type="application/zip", 
-        headers={"Content-Disposition": f"attachment; filename={nombre_zip}"}
-    )
+    # Función interna para descargar archivos en paralelo
+    def descargar_un_archivo(p):
+        try:
+            path_interno = p.get('path_storage')
+            if not path_interno:
+                url_path = urlparse(p['url_archivo']).path
+                path_interno = url_path.split("/object/public/polizas/")[1]
+                path_interno = unquote(path_interno)
+            
+            archivo_binario = supabase.storage.from_("polizas").download(path_interno)
+            return {
+                "anio": p['anio'],
+                "mes": p['mes'],
+                "id": p['id'],
+                "nombre_archivo": path_interno.split("/")[-1],
+                "binario": archivo_binario
+            }
+        except Exception as e:
+            print(f"Error descargando de Supabase: {e}")
+            return None
 
+    # Descargamos hasta 10 PDFs al mismo tiempo
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        resultados = list(executor.map(descargar_un_archivo, polizas.data))
+    
+    # Armamos el ZIP al instante sin comprimir (ZIP_STORED) porque los PDFs ya vienen listos
+    nombres_usados = set()
+    with zipfile.ZipFile(temp_file.name, "w", zipfile.ZIP_STORED) as zip_file:
+        for res in resultados:
+            if not res:
+                continue
+            
+            ruta_interna = f"{res['anio']}/{res['mes']}/{res['nombre_archivo']}"
+            
+            if ruta_interna in nombres_usados:
+                nombre_base, ext = os.path.splitext(res['nombre_archivo'])
+                ruta_interna = f"{res['anio']}/{res['mes']}/{nombre_base}_{res['id']}{ext}"
+            
+            nombres_usados.add(ruta_interna)
+            zip_file.writestr(ruta_interna, res['binario'])
+                
+    background_tasks.add_task(os.remove, temp_file.name)
+    
+    nombre_zip = f"polizas_{anio}.zip" if anio != "todos" else "respaldo_total.zip"
+    return FileResponse(path=temp_file.name, filename=nombre_zip, media_type="application/zip")
+    
 @router.delete("/purgar_ano/{anio}")
 def purgar_anio(request: Request, anio: int):
     if not request.session.get("usuario_id") or request.session.get("usuario_rol") != "admin":
