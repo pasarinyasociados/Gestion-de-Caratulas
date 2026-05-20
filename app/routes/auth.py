@@ -170,7 +170,7 @@ def detectar_obsoleto(request: Request):
     return {"anios": []}
 
 @router.get("/descargar_ano/{anio}")
-async def descargar_anio(request: Request, anio: str):
+def descargar_anio(request: Request, anio: str):
     if not request.session.get("usuario_id") or request.session.get("usuario_rol") != "admin":
         raise HTTPException(status_code=404, detail="No autorizado")
     
