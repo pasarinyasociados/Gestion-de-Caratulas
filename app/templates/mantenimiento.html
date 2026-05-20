@@ -129,22 +129,27 @@
             checarAniosObsoletos();
         }
 
-        async function descargarZip() {
+        function descargarZip() {
             const anio = document.getElementById('anio-download').value;
-            
-            // Hacemos una petición silenciosa antes de redirigir para validar si hay archivos
-            try {
-                const res = await fetch(`/descargar_ano/${anio}`);
-                if (res.status === 404) {
-                    mostrarAviso("¡Atención! No existen pólizas guardadas para el periodo seleccionado.");
-                } else if (res.ok) {
-                    // Si todo está bien, disparamos la descarga real
-                    window.location.href = `/descargar_ano/${anio}`;
-                }
-            } catch (e) {
-                console.error(e);
-            }
+            const btn = document.querySelector('.btn-download');
+
+            // Cambiamos el texto para que sepas que sí está trabajando
+            const textoOriginal = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generando ZIP...';
+            btn.disabled = true;
+            btn.classList.add('btn-disabled');
+
+            // Disparamos la descarga directa sin hacer doble petición al servidor
+            window.location.href = `/descargar_ano/${anio}`;
+
+            // Regresamos el botón a la normalidad después de unos segundos
+            setTimeout(() => {
+                btn.innerHTML = textoOriginal;
+                btn.disabled = false;
+                btn.classList.remove('btn-disabled');
+            }, 5000);
         }
+        
 
         async function checarAniosObsoletos() {
             const selectPurga = document.getElementById('anio-purgar');
