@@ -165,85 +165,74 @@
         }
 
 function validarNombreArchivo(nombre) {
-    // 1. Quitamos la extensión (.pdf) y los espacios de las orillas para analizar el texto limpio
     const nombreLimpio = nombre.replace(/\.[^/.]+$/, "").trim();
     
-    // CANDADO 1: Si contiene un guion medio (-), se bloquea de inmediato.
+    // CANDADO 1: Si contiene un guion medio (-), se bloquea.
     if (nombreLimpio.includes('-')) {
-        return { 
-            valido: false, 
-            motivo: "No se permiten guiones medios (-). Si es un archivo extra, usa guion bajo y número al final (Ej: _1)." 
-        };
+        return { valido: false, motivo: "No se permiten guiones medios (-)." };
     }
     
-    // CANDADO 2: Detectar palabras prohibidas al final con guion bajo (_copia, _autos)
-    const tieneTextoInvalidoAlFinal = /_(COPIA|AUTOS|RECIBO|CORREGIDO|CHECK|OK|RESPALDO)$/i.test(nombreLimpio);
-    if (tieneTextoInvalidoAlFinal) {
+    // CANDADO 2: Detectar palabras prohibidas al final.
+    if (/_(COPIA|AUTOS|RECIBO|CORREGIDO|CHECK|OK|RESPALDO)$/i.test(nombreLimpio)) {
+        return { valido: false, motivo: "No uses palabras prohibidas al final." };
+    }
+    
+    // CANDADO 3: Busca exactamente una minúscula pegada inmediatamente a una mayúscula (Ej: ALVAREZcopia)
+    if (/[A-ZÁÉÍÓÚÑ][a-záéíóúñ]/.test(nombreLimpio)) {
         return {
             valido: false,
-            motivo: "No uses palabras como '_copia' o '_autos' al final. Si es un archivo extra, usa guion bajo y número (Ej: _1)."
+            motivo: "Detectamos minúsculas pegadas al apellido (Ej: SANTANAcopia). Usa guion bajo y número si es extra."
         };
     }
     
-    // CANDADO 3: DETECTAR MINÚSCULAS PEBADAS AL APELLIDO (Ej: ALVAREZcopia)
-    // Buscamos si hay letras minúsculas en el nombre. Como tus nombres son 100% en mayúsculas,
-    // si el usuario escribe algo en minúsculas (excepto la extensión que ya quitamos), es un texto extra.
-    const tieneMinusculas = /[a-záéíóúñ]/.test(nombreLimpio);
-    if (tieneMinusculas) {
-        return {
-            valido: false,
-            motivo: "Detectamos letras minúsculas en el nombre. Todo el nombre del cliente debe ir en MAYÚSCULAS. Si es un archivo extra, usa _1, _2 al final."
-        };
-    }
-    
-    // Si pasa todos los filtros, está limpio
     return { valido: true };
 }
         
-        function mostrarNombreArchivo() {
-            const input = document.getElementById('file-input');
-            const info = document.getElementById('file-info');
-            const text = document.getElementById('drop-text');
-            const btnEnviar = document.getElementById('btn-enviar');
+function mostrarNombreArchivo() {
+    const input = document.getElementById('file-input');
+    const info = document.getElementById('file-info');
+    const text = document.getElementById('drop-text');
+    const btnEnviar = document.getElementById('btn-enviar');
+    
+    if(input.files.length > 0) {
+        archivosSeleccionados = Array.from(input.files);
+    }
+
+    let hayErrores = false;
+
+    if(archivosSeleccionados.length > 0) {
+        text.style.display = "none";
+        info.innerHTML = ""; 
+        
+        archivosSeleccionados.forEach(file => {
+            const validacion = validarNombreArchivo(file.name);
+            const item = document.createElement('div');
             
-            if(input.files.length > 0) {
-                archivosSeleccionados = Array.from(input.files);
+            if (!validacion.valido) {
+                hayErrores = true;
+                item.className = 'file-item invalid';
+                item.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> <span title="${validacion.motivo}">${file.name} (Error de formato)</span>`;
+            } else {
+                item.className = 'file-item';
+                item.innerHTML = `<i class="fa-solid fa-file-pdf" style="color: red;"></i> <span>${file.name}</span>`;
             }
+            info.appendChild(item);
+        });
 
-            let hayErrores = false;
-
-            if(archivosSeleccionados.length > 0) {
-                text.style.display = "none";
-                info.innerHTML = ""; 
-                
-                archivosSeleccionados.forEach(file => {
-                    const validacion = validarNombreArchivo(file.name);
-                    const item = document.createElement('div');
-                    
-                    if (!validacion.valido) {
-                        hayErrores = true;
-                        item.className = 'file-item invalid';
-                        item.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> <span title="${validacion.motivo}">${file.name} (Error de formato)</span>`;
-                    } else {
-                        item.className = 'file-item';
-                        item.innerHTML = `<i class="fa-solid fa-file-pdf" style="color: red;"></i> <span>${file.name}</span>`;
-                    }
-                    info.appendChild(item);
-                });
-
-                // Si hay algún error detectado, congelamos el botón de subida
-                if (hayErrores) {
-                    btnEnviar.disabled = true;
-                    btnEnviar.style.backgroundColor = "var(--border)";
-                    btnEnviar.style.color = "var(--text-muted)";
-                    lanzarToast("Hay archivos con formato de nombre inválido. Corrígelos antes de subir.", "danger");
-                } else {
-                    btnEnviar.disabled = false;
-                    btnEnviar.style.backgroundColor = "var(--primary)";
-                    btnEnviar.style.color = "var(--bg-dark)";
-                }
-            }
+        // Si hay algún error detectado, congelamos el botón de subida
+        if (hayErrores) {
+            btnEnviar.disabled = true;
+            btnEnviar.style.backgroundColor = "var(--border)";
+            btnEnviar.style.color = "var(--text-muted)";
+            lanzarToast("Hay archivos con formato de nombre inválido. Corrígelos antes de subir.", "danger");
+        } else {
+            btnEnviar.disabled = false;
+            btnEnviar.style.backgroundColor = "var(--primary)";
+            btnEnviar.style.color = "var(--bg-dark)";
         }
+    }
+}
+        
 
         function lanzarToast(mensaje, tipo) {
             const toast = document.getElementById('toast');
