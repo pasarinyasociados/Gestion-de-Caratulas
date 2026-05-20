@@ -15,7 +15,6 @@
         body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; }
         .sidebar { width: 260px; background-color: var(--bg-card); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
         
-        /* Contenedor con fondo blanco al 50% de transparencia y esquinas redondeadas */
         .brand { 
             display: flex; 
             justify-content: center; 
@@ -67,12 +66,12 @@
         </div>
         <ul class="menu">
             <li class="menu-item"><a href="/panel"><i class="fa-solid fa-magnifying-glass"></i> Consultar</a></li>
-            <li class="menu-item"><a href="/subir_pantalla"><i class="fa-solid fa-cloud-arrow-up"></i> Cargar Póliza</a></li>
+            <li class="menu-item"><a href="/subir_pantalla"><i class="fa-solid fa-cloud-arrow-up"></i> Cargar Documentos</a></li>
             {% if rol == 'admin' %}
             <li class="menu-item"><a href="/usuarios_pantalla"><i class="fa-solid fa-users-gear"></i> Usuarios</a></li>
             <li class="menu-item active"><a href="/mantenimiento_pantalla"><i class="fa-solid fa-database"></i> Mantenimiento</a></li>
             {% endif %}
-            <li class="menu-item logout" style="margin-top: auto;"><a href="/logout"><i class="fa-solid fa-right-from-bracket"></i> Salir</a></li>
+            <li class="menu-item logout" style="margin-top: auto;"><a href="/"><i class="fa-solid fa-right-from-bracket"></i> Salir</a></li>
         </ul>
     </div>
     <div class="main-content">
