@@ -171,7 +171,7 @@ def detectar_obsoleto(request: Request):
     return {"anios": []}
 
 @router.get("/descargar_ano/{anio}")
-def descargar_anio(request: Request, anio: str, background_tasks: BackgroundTasks):
+def descargar_anio(request: Request, anio: str, background_tasks: fastapi.BackgroundTasks = fastapi.BackgroundTasks()):
     if not request.session.get("usuario_id") or request.session.get("usuario_rol") != "admin":
         raise HTTPException(status_code=404, detail="No autorizado")
     
