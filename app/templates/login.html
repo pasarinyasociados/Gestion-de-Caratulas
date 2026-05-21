@@ -22,31 +22,26 @@
             justify-content: center; 
             padding: 1.5rem;
         }
+
+        /* ANIMACIÓN DE TEMBLOR */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25%, 75% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+        }
+        .temblor-error { animation: shake 0.4s ease-in-out; }
         
-        /* ENCABEZADO Y LOGO COMPARTIDO */
-        .brand-header { text-align: center; margin-bottom: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-	.system-logo { 
-            width: 100%; 
-            max-width: 280px; 
-            height: auto;     
-            object-fit: contain;
-            background-color: #ffffff;
-            padding: 12px 18px;
-            display: block;
+        .system-logo { 
+            width: 100%; max-width: 280px; height: auto; object-fit: contain;
+            background-color: #ffffff; padding: 12px 18px; display: block;
             margin: 0 auto 10px auto;
-            
-            /* Este truco hace el desvanecido (fade) suave hacia las orillas */
             -webkit-mask-image: radial-gradient(circle, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
             mask-image: radial-gradient(circle, rgba(0,0,0,1) 65%, rgba(0,0,0,0) 100%);
         }
 
         .login-card { 
-            background-color: var(--bg-card); 
-            border: 1px solid var(--border); 
-            border-radius: 1rem; 
-            padding: 2.5rem; 
-            width: 100%; 
-            max-width: 420px; 
+            background-color: var(--bg-card); border: 1px solid var(--border); 
+            border-radius: 1rem; padding: 2.5rem; width: 100%; max-width: 420px; 
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
         }
         .form-group { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
@@ -69,7 +64,7 @@
         <h1 class="system-title">SGP - Gestión de Pólizas</h1>
     </div>
 
-    <div class="login-card">
+    <div class="login-card" id="login-card">
         {% if error %}
         <div class="error-alert">
             <i class="fa-solid fa-circle-exclamation"></i>
@@ -77,7 +72,7 @@
         </div>
         {% endif %}
 
-        <form action="/login" method="POST">
+        <form action="/login" method="POST" id="login-form">
             <div class="form-group">
                 <label for="username">Usuario</label>
                 <div class="input-wrapper">
@@ -98,5 +93,13 @@
         </form>
     </div>
 
+    <script>
+        // Si existe un mensaje de error, activamos el efecto de temblor al cargar
+        {% if error %}
+        const card = document.getElementById('login-card');
+        card.classList.add('temblor-error');
+        setTimeout(() => card.classList.remove('temblor-error'), 400);
+        {% endif %}
+    </script>
 </body>
 </html>
