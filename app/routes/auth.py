@@ -32,20 +32,30 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
         return RedirectResponse(url="/?error=Contrasena+incorrecta", status_code=303)
 
 @router.get("/buscar_poliza")
-def buscar_poliza(request: Request, cliente: str = None, dia: str = None, mes: str = None, anio: str = None):
+def buscar_poliza(request: Request, cliente: str = None, dia: str = None, mes: str = None, anio: str = None, tipo: str = None):
     if not request.session.get("usuario_id"):
         raise HTTPException(status_code=401, detail="No autorizado")
 
     query = supabase.table("polizas").select("*")
+    
+    # --- BUSCADOR INTELIGENTE POR PALABRAS ---
     if cliente and cliente.strip() and cliente != "undefined":
-        term = f"%{cliente.strip()}%"
-        query = query.ilike("cliente_nombre", term)
+        # Separamos lo que escribiste por espacios (Ej: ["juan", "perez"])
+        palabras = cliente.strip().split()
+        for palabra in palabras:
+            # Obligamos a que CADA palabra exista en el nombre, sin importar el orden
+            query = query.ilike("cliente_nombre", f"%{palabra}%")
+
     if dia and dia.strip() and dia != "undefined":
         query = query.eq("dia", int(dia))
-    if mes and mes.strip() and mes != "undefined":
+    if mes and mes.strip() and mes != "undefined" and mes.upper() != "TODOS":
         query = query.eq("mes", mes.strip().upper())
-    if anio and anio.strip() and anio != "undefined":
+    if anio and anio.strip() and anio != "undefined" and anio != "todos":
         query = query.eq("anio", int(anio))
+        
+    # --- FILTRO DE TIPO (Póliza, Recibo o Todos) ---
+    if tipo and tipo.strip() and tipo != "undefined" and tipo.lower() != "todos":
+        query = query.eq("tipo", tipo.strip().lower())
         
     resultado = query.execute()
     return resultado.data if resultado.data else {"error": "No se encontraron pólizas"}
