@@ -79,7 +79,7 @@ async def subir_poliza(
         
         # Normalizar el nombre físico para el almacenamiento en Storage
         nombre_limpio_storage = unicodedata.normalize('NFKD', nombre_original).encode('ascii', 'ignore').decode('ascii')
-        file_path = f"{anio}/{mes_extraido}/{nombre_limpio_storage}"
+        file_path = f"{anio}/{mes_extraido}/{tipo}/{nombre_limpio_storage}"
 
         # --- VALIDACIÓN ANTIDUPLICADOS REAL (POR PATH EXACTO DEL ARCHIVO) ---
         existe_poliza = supabase.table("polizas")\
