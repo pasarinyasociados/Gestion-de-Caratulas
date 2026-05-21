@@ -100,12 +100,12 @@ async def subir_poliza(
         url_archivo = supabase.storage.from_("polizas").get_public_url(file_path)
             
         data = {
-            "cliente_nombre": nombre_cliente_limpio, # Nombre limpio para que lo busques fácilmente
+            "cliente_nombre": nombre_cliente_limpio, 
             "dia": dia_extraido, 
             "mes": mes_extraido[:3], 
             "anio": anio, 
             "url_archivo": url_archivo,
-            "path_storage": file_path, # Guarda el nombre único original con sus números
+            "path_storage": file_path, 
             "tipo": tipo
         }
 
@@ -113,7 +113,19 @@ async def subir_poliza(
         return {"message": "Exito"}
         
     except Exception as e:
-        return {"error": str(e)}
+        error_msg = str(e).lower()
+        
+        # Identificamos si es un error real de duplicado (conflicto 409)
+        if "409" in error_msg or "already exists" in error_msg:
+            return {"error": "duplicado", "message": "El archivo ya existe en el sistema."}
+        
+        # Identificamos si es un error de conexión o tiempo de espera (Timeout)
+        elif "timed out" in error_msg or "read operation" in error_msg or "timeout" in error_msg:
+            return {"error": "timeout", "message": "El servidor tardó mucho en responder (Timeout). Intenta subir este archivo de nuevo."}
+        
+        # Cualquier otro error técnico que llegue a pasar
+        else:
+            return {"error": "desconocido", "message": f"Error inesperado: {str(e)[:50]}"}
         
 @router.get("/usuarios_lista")
 def listar_usuarios(request: Request):
