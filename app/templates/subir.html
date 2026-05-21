@@ -14,6 +14,32 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
         body { background-color: var(--bg-dark); color: var(--text-main); min-height: 100vh; display: flex; }
         .sidebar { width: 260px; background-color: var(--bg-card); border-right: 1px solid var(--border); padding: 2rem 1.5rem; display: flex; flex-direction: column; gap: 2rem; }
+
+        /* Animación de la caja cuando hay error */
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25%, 75% { transform: translateX(-10px); }
+        50% { transform: translateX(10px); }
+    }
+
+    .temblor-error {
+        animation: shake 0.4s ease-in-out;
+        border: 2px solid red !important;
+        background-color: rgba(255, 0, 0, 0.05); 
+    }
+
+    /* Animación del icono cuando todo está bien */
+    @keyframes bounce {
+        0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+        40% { transform: translateY(-6px); }
+        60% { transform: translateY(-3px); }
+    }
+
+    .icono-ok {
+        color: #10b981 !important; 
+        animation: bounce 1s ease;
+        display: inline-block;
+    }
         
         .brand { 
             display: flex; 
@@ -193,7 +219,8 @@ function mostrarNombreArchivo() {
     const info = document.getElementById('file-info');
     const text = document.getElementById('drop-text');
     const btnEnviar = document.getElementById('btn-enviar');
-    
+    const dropZone = document.getElementById('drop-zone');
+
     if(input.files.length > 0) {
         archivosSeleccionados = Array.from(input.files);
     }
@@ -211,21 +238,25 @@ function mostrarNombreArchivo() {
             if (!validacion.valido) {
                 hayErrores = true;
                 item.className = 'file-item invalid';
-                item.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> <span title="${validacion.motivo}">${file.name} (Error de formato)</span>`;
+                item.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger);"></i> <span title="${validacion.motivo}">${file.name} (Error)</span>`;
             } else {
                 item.className = 'file-item';
-                item.innerHTML = `<i class="fa-solid fa-file-pdf" style="color: red;"></i> <span>${file.name}</span>`;
+                // Aquí se aplica el icono-ok para el rebote
+                item.innerHTML = `<i class="fa-solid fa-file-pdf icono-ok"></i> <span>${file.name}</span>`;
             }
             info.appendChild(item);
         });
 
-        // Si hay algún error detectado, congelamos el botón de subida
+        // Lógica de animaciones
         if (hayErrores) {
+            dropZone.classList.add('temblor-error');
+            setTimeout(() => dropZone.classList.remove('temblor-error'), 400);
             btnEnviar.disabled = true;
             btnEnviar.style.backgroundColor = "var(--border)";
             btnEnviar.style.color = "var(--text-muted)";
-            lanzarToast("Hay archivos con formato de nombre inválido. Corrígelos antes de subir.", "danger");
+            lanzarToast("Hay archivos con formato inválido.", "danger");
         } else {
+            dropZone.classList.remove('temblor-error');
             btnEnviar.disabled = false;
             btnEnviar.style.backgroundColor = "var(--primary)";
             btnEnviar.style.color = "var(--bg-dark)";
