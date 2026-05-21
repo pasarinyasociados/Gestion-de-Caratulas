@@ -102,9 +102,22 @@
                     </select>
                 </div>
 
-                <div class="form-group"><label>Día</label><input type="number" id="dia" class="form-control" placeholder="05"></div>
+                <div class="form-group">
+                    <label>Día</label>
+                    <select id="dia" class="form-control">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+
                 <div class="form-group"><label>Mes</label><select id="mes" class="form-control"><option value="">Todos</option><option value="ENE">Enero</option><option value="FEB">Febrero</option><option value="MAR">Marzo</option><option value="ABR">Abril</option><option value="MAY">Mayo</option><option value="JUN">Junio</option><option value="JUL">Julio</option><option value="AGO">Agosto</option><option value="SEP">Septiembre</option><option value="OCT">Octubre</option><option value="NOV">Noviembre</option><option value="DIC">Diciembre</option></select></div>
-                <div class="form-group"><label>Año</label><input type="number" id="anio" class="form-control" placeholder="2026"></div>
+                
+                <div class="form-group">
+                    <label>Año</label>
+                    <select id="anio" class="form-control">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+
                 <button class="btn btn-primary" onclick="ejecutarBusqueda()"><i class="fa-solid fa-magnifying-glass"></i> Buscar</button>
             </div>
         </section>
@@ -117,6 +130,29 @@
     <div id="toast" class="toast"><i id="toast-icon" class="fa-solid"></i> <span id="toast-msg"></span></div>
 
     <script>
+        // Carga automática e inteligente de los selectores al abrir la página
+        document.addEventListener("DOMContentLoaded", function() {
+            // Llenar el selector de días (1 al 31)
+            const selectDia = document.getElementById("dia");
+            for (let i = 1; i <= 31; i++) {
+                const opt = document.createElement("option");
+                opt.value = i;
+                opt.textContent = i;
+                selectDia.appendChild(opt);
+            }
+
+            // Llenar el selector de años (Año actual y 2 anteriores)
+            const selectAnio = document.getElementById("anio");
+            const anioActual = new Date().getFullYear();
+            for (let i = 0; i < 3; i++) {
+                const anio = anioActual - i;
+                const opt = document.createElement("option");
+                opt.value = i === 0 ? anio : anio; // Guarda el año como valor numérico
+                opt.textContent = anio;
+                selectAnio.appendChild(opt);
+            }
+        });
+
         async function ejecutarBusqueda() {
             const contenedor = document.getElementById('contenedor-resultados');
             const filtroTipo = document.getElementById('tipo').value;
