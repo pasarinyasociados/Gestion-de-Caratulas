@@ -147,7 +147,11 @@ def listar_usuarios(request: Request):
 def borrar_usuario(request: Request, user_id: str):
     if not request.session.get("usuario_id") or request.session.get("usuario_rol") != "admin":
         raise HTTPException(status_code=401, detail="No autorizado")
-    supabase.table("perfiles").delete().eq("id", user_id).execute()
+    
+    # Convertir a número si es un dígito, si no, se queda como texto (por si usas UUID)
+    id_filtro = int(user_id) if user_id.isdigit() else user_id
+    
+    supabase.table("perfiles").delete().eq("id", id_filtro).execute()
     return {"status": "success"}
 
 @router.post("/crear_usuario")
@@ -169,12 +173,16 @@ def crear_usuario(request: Request, username: str = Form(...), password: str = F
 def actualizar_usuario(request: Request, user_id: str, password: str = Form(...), rol: str = Form(...)):
     if not request.session.get("usuario_id") or request.session.get("usuario_rol") != "admin":
         return RedirectResponse(url="/?error=No+autorizado", status_code=303)
+    
+    # Convertir a número si es un dígito, si no, se queda como texto (por si usas UUID)
+    id_filtro = int(user_id) if user_id.isdigit() else user_id
+    
     rol_solicitado = rol.strip().lower()
     opciones_rol = [rol_solicitado] if rol_solicitado == "admin" else ["user", "usuario", "operador"]
     for r_intento in opciones_rol:
         try:
             actualizacion = {"password_hash": password.strip(), "rol": r_intento}
-            supabase.table("perfiles").update(actualizacion).eq("id", user_id).execute()
+            supabase.table("perfiles").update(actualizacion).eq("id", id_filtro).execute()
             return RedirectResponse(url="/usuarios_pantalla", status_code=303)
         except APIError:
             continue
