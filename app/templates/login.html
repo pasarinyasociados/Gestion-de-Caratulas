@@ -73,13 +73,15 @@
         {% endif %}
 
         <form action="/login" method="POST" id="login-form">
-            <div class="form-group">
-                <label for="username">Usuario</label>
-                <div class="input-wrapper">
-                    <i class="fa-solid fa-user"></i>
-                    <input type="text" id="username" name="username" class="form-control" placeholder="Ingresa tu usuario" required autocomplete="off">
-                </div>
-            </div>
+    <input type="hidden" id="token_oficina_input" name="token_oficina_input">
+    
+    <div class="form-group">
+        <label for="username">Usuario</label>
+        <div class="input-wrapper">
+            <i class="fa-solid fa-user"></i>
+            <input type="text" id="username" name="username" class="form-control" placeholder="Ingresa tu usuario" required autocomplete="off">
+        </div>
+    </div>
 
             <div class="form-group">
                 <label for="password">Contraseña</label>
@@ -93,13 +95,22 @@
         </form>
     </div>
 
-    <script>
-        // Si existe un mensaje de error, activamos el efecto de temblor al cargar
+<script>
+        // 1. Efecto de temblor si hay error (tu código original)
         {% if error %}
         const card = document.getElementById('login-card');
         card.classList.add('temblor-error');
         setTimeout(() => card.classList.remove('temblor-error'), 400);
         {% endif %}
+
+        // 2. Inyectar el token de la máquina en el formulario antes de enviarlo
+        const form = document.getElementById('login-form');
+        form.addEventListener('submit', function() {
+            const tokenOculto = localStorage.getItem("token_oficina");
+            if (tokenOculto) {
+                document.getElementById('token_oficina_input').value = tokenOculto;
+            }
+        });
     </script>
 </body>
 </html>
