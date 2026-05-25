@@ -18,19 +18,35 @@ router = APIRouter()
 
 @router.post("/login")
 def login(request: Request, username: str = Form(...), password: str = Form(...)):
+    # 1. Traemos al usuario (ahora jalamos todo con "*" para incluir las nuevas columnas)
     user = supabase.table("perfiles").select("*").eq("username", username).execute()
     
     if not user.data:
         return RedirectResponse(url="/?error=Usuario+no+encontrado", status_code=303)
     
-    if user.data[0]['password_hash'].strip() == password.strip():
-        request.session["usuario_id"] = str(user.data[0]['id'])
-        request.session["usuario_rol"] = str(user.data[0]['rol']).lower()
-        request.session["usuario_nombre"] = str(user.data[0]['username']) 
+    perfil = user.data[0]
+    
+    # 2. Validamos la contraseña
+    if perfil['password_hash'].strip() == password.strip():
+        
+        # 🔒 [NUEVO CANDADO] Revisa si este perfil está amarrado a la oficina
+        if perfil.get("requiere_token") is True:
+            # Leemos la marca que viene desde el navegador (en un momento vemos cómo la manda el HTML)
+            token_navegador = request.headers.get("X-Token-Oficina")
+            token_seguro_db = perfil.get("token_oficina")
+            
+            # Si el navegador está vacío o no coincide el token... ¡Bloqueado!
+            if not token_navegador or token_navegador != token_seguro_db:
+                return RedirectResponse(url="/?error=Equipo+no+autorizado+para+este+usuario", status_code=303)
+        
+        # 3. Si pasó el candado (o si es dueño y no requiere token), inicia sesión normal
+        request.session["usuario_id"] = str(perfil['id'])
+        request.session["usuario_rol"] = str(perfil['rol']).lower()
+        request.session["usuario_nombre"] = str(perfil['username']) 
         return RedirectResponse(url="/panel", status_code=303)
     else:
         return RedirectResponse(url="/?error=Contrasena+incorrecta", status_code=303)
-
+        
 @router.get("/buscar_poliza")
 def buscar_poliza(request: Request, cliente: str = None, dia: str = None, mes: str = None, anio: str = None, tipo: str = None):
     if not request.session.get("usuario_id"):
