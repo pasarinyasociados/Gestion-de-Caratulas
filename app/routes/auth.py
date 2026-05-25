@@ -17,8 +17,8 @@ from urllib.parse import unquote, urlparse
 router = APIRouter()
 
 @router.post("/login")
-def login(request: Request, username: str = Form(...), password: str = Form(...)):
-    # 1. Traemos al usuario (ahora jalamos todo con "*" para incluir las nuevas columnas)
+def login(request: Request, username: str = Form(...), password: str = Form(...), token_oficina_input: str = Form(None)):
+    # 1. Buscamos el perfil por alias
     user = supabase.table("perfiles").select("*").eq("username", username).execute()
     
     if not user.data:
@@ -26,20 +26,19 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
     
     perfil = user.data[0]
     
-    # 2. Validamos la contraseña
+    # 2. Validamos contraseña
     if perfil['password_hash'].strip() == password.strip():
         
-        # 🔒 [NUEVO CANDADO] Revisa si este perfil está amarrado a la oficina
+        # 🔒 [CANDADO] Revisa si este perfil requiere token obligatorio
         if perfil.get("requiere_token") is True:
-            # Leemos la marca que viene desde el navegador (en un momento vemos cómo la manda el HTML)
-            token_navegador = request.headers.get("X-Token-Oficina")
+            token_navegador = token_oficina_input
             token_seguro_db = perfil.get("token_oficina")
             
-            # Si el navegador está vacío o no coincide el token... ¡Bloqueado!
+            # Si no hay token o no coincide, directo para afuera
             if not token_navegador or token_navegador != token_seguro_db:
                 return RedirectResponse(url="/?error=Equipo+no+autorizado+para+este+usuario", status_code=303)
         
-        # 3. Si pasó el candado (o si es dueño y no requiere token), inicia sesión normal
+        # 3. Si todo está bien, inicia sesión normal
         request.session["usuario_id"] = str(perfil['id'])
         request.session["usuario_rol"] = str(perfil['rol']).lower()
         request.session["usuario_nombre"] = str(perfil['username']) 
